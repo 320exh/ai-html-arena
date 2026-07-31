@@ -11,7 +11,7 @@ AI comparison project: submit two prompts to [arena.ai](https://arena.ai) and co
 
 ## Results
 
-Generated HTML files go in `results/`. Each prompt gets its own output file.
+Generated HTML files go in `results/`. Each prompt gets its own output file, organized by run under `results/<run>/`.
 
 ## License
 
