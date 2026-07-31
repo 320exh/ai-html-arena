@@ -13,19 +13,6 @@ AI comparison project: submit two prompts to [arena.ai](https://arena.ai) and co
 
 Generated HTML files go in `results/`. Each prompt gets its own output file.
 
-## Workflow
-
-1. Run both prompts on arena.ai
-2. Save the resulting HTML files into `results/`
-3. Commit and push to GitHub
-
-## Notes
-
-- After making changes, commit and push to GitHub immediately — don't wait for reminders
-- `CLAUDE.md` and `.gitignore` are not committed to the repo
-- `prompts/` is the source of truth for what was submitted
-- `README.md` is auto-maintained — update it whenever prompts, results, or workflow steps change
-
 ## License
 
 [MIT](LICENSE)
