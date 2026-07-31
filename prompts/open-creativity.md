@@ -1,2 +1,2 @@
-Build the coolest HTML project you can imagine.
+Build the coolest single-file HTML project you can imagine.
 
