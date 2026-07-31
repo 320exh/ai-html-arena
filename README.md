@@ -7,7 +7,7 @@ AI comparison project: submit two prompts to [arena.ai](https://arena.ai) and co
 | Prompt | File | Goal |
 |--------|------|------|
 | Paint program | `prompts/paint-program.md` | Build a fully featured paint program in one HTML file |
-| Open creativity | `prompts/open-creativity.md` | Build the coolest HTML project it can imagine |
+| Open creativity | `prompts/open-creativity.md` | Build the coolest single-file HTML project you can imagine |
 
 ## Results
 
