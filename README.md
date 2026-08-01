@@ -1,4 +1,4 @@
-# ai-html-arena
+# ai-html-arena-v1
 
 AI comparison project: submit two prompts to [arena.ai](https://arena.ai) and compare the HTML results side by side.
 
