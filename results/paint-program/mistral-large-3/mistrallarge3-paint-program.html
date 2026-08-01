@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paint Program</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #toolbar {
+            background-color: #f3f4f6;
+            border-right: 1px solid #e5e7eb;
+        }
+        .tool-button {
+            transition: all 0.2s;
+        }
+        .tool-button.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .tool-button:hover:not(.active) {
+            background-color: #e5e7eb;
+        }
+        #color-picker {
+            width: 100%;
+            height: 30px;
+            padding: 0;
+            border: none;
+            cursor: pointer;
+        }
+        #canvas {
+            background-color: white;
+            cursor: crosshair;
+        }
+    </style>
+</head>
+<body class="bg-gray-200 h-screen w-screen flex">
+    <!-- Toolbar -->
+    <div id="toolbar" class="w-16 h-full flex flex-col items-center py-4 space-y-2">
+        <!-- Drawing Tools -->
+        <button id="pencil-tool" class="tool-button active w-12 h-12 rounded flex items-center justify-center" title="Pencil">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+        </button>
+        <button id="eraser-tool" class="tool-button w-12 h-12 rounded flex items-center justify-center" title="Eraser">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 16v-2m8-8h2M4 12H2m15.364 6.364l1.414 1.414M4.222 4.222l1.414 1.414m12.728 0l-1.414 1.414M4.222 19.778l1.414-1.414M12 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+        </button>
+        <button id="rect-tool" class="tool-button w-12 h-12 rounded flex items-center justify-center" title="Rectangle">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+        </button>
+        <button id="circle-tool" class="tool-button w-12 h-12 rounded flex items-center justify-center" title="Circle">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        </button>
+        <button id="line-tool" class="tool-button w-12 h-12 rounded flex items-center justify-center" title="Line">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            </svg>
+        </button>
+        
+        <!-- Color Picker -->
+        <div class="w-12 h-12 rounded flex items-center justify-center">
+            <input type="color" id="color-picker" value="#000000" title="Color Picker">
+        </div>
+        
+        <!-- Brush Size -->
+        <div class="w-12 px-2">
+            <input type="range" id="brush-size" min="1" max="50" value="5" class="w-full" title="Brush Size">
+            <div class="text-xs text-center" id="brush-size-value">5</div>
+        </div>
+        
+        <!-- Actions -->
+        <button id="undo-btn" class="tool-button w-12 h-12 rounded flex items-center justify-center" title="Undo">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.333 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z" />
+            </svg>
+        </button>
+        <button id="redo-btn" class="tool-button w-12 h-12 rounded flex items-center justify-center" title="Redo">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z" />
+            </svg>
+        </button>
+        <button id="clear-btn" class="tool-button w-12 h-12 rounded flex items-center justify-center" title="Clear">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+        </button>
+        <button id="save-btn" class="tool-button w-12 h-12 rounded flex items-center justify-center" title="Save">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+        </button>
+    </div>
+    
+    <!-- Canvas -->
+    <div class="flex-1 flex items-center justify-center p-4">
+        <canvas id="canvas" class="border border-gray-300 shadow-lg"></canvas>
+    </div>
+    
+    <script>
+        // JavaScript will go here
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize canvas
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas size
+            function resizeCanvas() {
+                const container = canvas.parentElement;
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientHeight;
+                redrawCanvas();
+            }
+            
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            
+            // Drawing state
+            let isDrawing = false;
+            let currentTool = 'pencil';
+            let currentColor = '#000000';
+            let brushSize = 5;
+            let startX, startY;
+            
+            // History for undo/redo
+            let history = [];
+            let historyIndex = -1;
+            let maxHistory = 50;
+            
+            // Save state to history
+            function saveState() {
+                // Remove any states after current history index
+                if (historyIndex < history.length - 1) {
+                    history = history.slice(0, historyIndex + 1);
+                }
+                
+                // Add new state
+                history.push(canvas.toDataURL());
+                historyIndex++;
+                
+                // Limit history size
+                if (history.length > maxHistory) {
+                    history.shift();
+                    historyIndex--;
+                }
+            }
+            
+            // Redraw canvas from history
+            function redrawCanvas() {
+                if (historyIndex >= 0) {
+                    const img = new Image();
+                    img.onload = function() {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img, 0, 0);
+                    };
+                    img.src = history[historyIndex];
+                }
+            }
+            
+            // Tool button event listeners
+            document.querySelectorAll('.tool-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    // Remove active class from all buttons
+                    document.querySelectorAll('.tool-button').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    
+                    // Add active class to clicked button
+                    this.classList.add('active');
+                    
+                    // Set current tool
+                    currentTool = this.id.replace('-tool', '').replace('-btn', '');
+                });
+            });
+            
+            // Color picker
+            document.getElementById('color-picker').addEventListener('input', function() {
+                currentColor = this.value;
+            });
+            
+            // Brush size
+            document.getElementById('brush-size').addEventListener('input', function() {
+                brushSize = this.value;
+                document.getElementById('brush-size-value').textContent = brushSize;
+            });
+            
+            // Undo
+            document.getElementById('undo-btn').addEventListener('click', function() {
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    redrawCanvas();
+                }
+            });
+            
+            // Redo
+            document.getElementById('redo-btn').addEventListener('click', function() {
+                if (historyIndex < history.length - 1) {
+                    historyIndex++;
+                    redrawCanvas();
+                }
+            });
+            
+            // Clear
+            document.getElementById('clear-btn').addEventListener('click', function() {
+                if (confirm('Are you sure you want to clear the canvas?')) {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    saveState();
+                }
+            });
+            
+            // Save
+            document.getElementById('save-btn').addEventListener('click', function() {
+                const link = document.createElement('a');
+                link.download = 'drawing.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+            
+            // Drawing functions
+            function startDrawing(e) {
+                isDrawing = true;
+                startX = e.offsetX || e.touches[0].clientX - canvas.getBoundingClientRect().left;
+                startY = e.offsetY || e.touches[0].clientY - canvas.getBoundingClientRect().top;
+                
+                if (currentTool === 'pencil' || currentTool === 'eraser') {
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                }
+            }
+            
+            function draw(e) {
+                if (!isDrawing) return;
+                
+                const currentX = e.offsetX || e.touches[0].clientX - canvas.getBoundingClientRect().left;
+                const currentY = e.offsetY || e.touches[0].clientY - canvas.getBoundingClientRect().top;
+                
+                if (currentTool === 'pencil') {
+                    ctx.strokeStyle = currentColor;
+                    ctx.lineWidth = brushSize;
+                    ctx.lineCap = 'round';
+                    ctx.lineTo(currentX, currentY);
+                    ctx.stroke();
+                } else if (currentTool === 'eraser') {
+                    ctx.strokeStyle = '#FFFFFF';
+                    ctx.lineWidth = brushSize;
+                    ctx.lineCap = 'round';
+                    ctx.lineTo(currentX, currentY);
+                    ctx.stroke();
+                } else if (currentTool === 'rect') {
+                    redrawCanvas();
+                    ctx.strokeStyle = currentColor;
+                    ctx.lineWidth = brushSize;
+                    ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
+                } else if (currentTool === 'circle') {
+                    redrawCanvas();
+                    ctx.strokeStyle = currentColor;
+                    ctx.lineWidth = brushSize;
+                    const radius = Math.sqrt(Math.pow(currentX - startX, 2) + Math.pow(currentY - startY, 2));
+                    ctx.beginPath();
+                    ctx.arc(startX, startY, radius, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else if (currentTool === 'line') {
+                    redrawCanvas();
+                    ctx.strokeStyle = currentColor;
+                    ctx.lineWidth = brushSize;
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(currentX, currentY);
+                    ctx.stroke();
+                }
+            }
+            
+            function stopDrawing() {
+                if (isDrawing) {
+                    isDrawing = false;
+                    saveState();
+                }
+            }
+            
+            // Event listeners for drawing
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            
+            // Touch support
+            canvas.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                startDrawing(e);
+            });
+            canvas.addEventListener('touchmove', function(e) {
+                e.preventDefault();
+                draw(e);
+            });
+            canvas.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                stopDrawing();
+            });
+            
+            // Initial state
+            saveState();
+        });
+    </script>
+</body>
+</html>
