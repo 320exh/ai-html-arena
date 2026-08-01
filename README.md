@@ -16,6 +16,7 @@ Generated HTML files go in `results/`. Each prompt gets its own folder (`paint-p
 ## Notes
 
 - Each model gets **one prompt only** — no followups or corrections
+- Each model gets **one session/try** — if the result is broken, it stays broken; no retries with the same prompt
 
 ## License
 
