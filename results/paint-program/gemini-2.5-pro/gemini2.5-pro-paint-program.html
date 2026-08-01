@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paint Program</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-gray-100 flex flex-col items-center justify-center h-screen">
+
+    <h1 class="text-4xl font-bold mb-4">Paint Program</h1>
+
+    <div class="flex items-center mb-4">
+        <label for="colorPicker" class="mr-2">Color:</label>
+        <input type="color" id="colorPicker" class="w-12 h-12">
+
+        <label for="brushSize" class="ml-4 mr-2">Brush Size:</label>
+        <input type="range" id="brushSize" min="1" max="50" value="5" class="slider">
+        <span id="brushSizeValue">5</span>
+
+        <button id="clearCanvas" class="ml-4 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Clear</button>
+                        <label for="toolType" class="ml-4 mr-2">Tool:</label>
+        <select id="toolType" class="border-2 border-gray-300 rounded-md p-2">
+            <option value="pencil">Pencil</option>
+            <option value="line">Line</option>
+            <option value="rectangle">Rectangle</option>
+            <option value="circle">Circle</option>
+        </select>
+
+        <label for="brushType" class="ml-4 mr-2">Brush Type:</label>
+        <select id="brushType" class="border-2 border-gray-300 rounded-md p-2">
+            <option value="normal">Normal</option>
+            <option value="spray">Spray</option>
+            <option value="pencil">Pencil</option>
+        </select>
+        <button id="eraser" class="ml-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Eraser</button>
+
+        <button id="undo" class="ml-4 bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">Undo</button>
+        <button id="redo" class="ml-4 bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">Redo</button>
+        <button id="save" class="ml-4 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Save</button>
+    </div>
+
+    <canvas id="paintCanvas" class="bg-white border-2 border-gray-300"></canvas>
+
+    <script>
+        const canvas = document.getElementById('paintCanvas');
+                const ctx = canvas.getContext('2d');
+
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCanvas.width = 800;
+        tempCanvas.height = 600;
+        const colorPicker = document.getElementById('colorPicker');
+        const brushSize = document.getElementById('brushSize');
+        const brushSizeValue = document.getElementById('brushSizeValue');
+        const clearCanvas = document.getElementById('clearCanvas');
+        const toolType = document.getElementById('toolType');
+        const brushType = document.getElementById('brushType');
+        const eraser = document.getElementById('eraser');
+
+        canvas.width = 800;
+        canvas.height = 600;
+
+        let isPainting = false;
+        let lastX = 0;
+        let lastY = 0;
+        let currentColor = '#000000';
+        let currentBrushSize = 5;
+                let isErasing = false;
+let currentBrushType = 'normal';
+let currentToolType = 'pencil';
+        let history = [];
+        let historyIndex = -1;
+
+        colorPicker.addEventListener('change', (e) => {
+            currentColor = e.target.value;
+            isErasing = false;
+        });
+
+                toolType.addEventListener('change', (e) => {
+            currentToolType = e.target.value;
+        });
+
+        brushType.addEventListener('change', (e) => {
+            currentBrushType = e.target.value;
+        });
+
+        brushSize.addEventListener('input', (e) => {
+            currentBrushSize = e.target.value;
+            brushSizeValue.textContent = e.target.value;
+        });
+
+        clearCanvas.addEventListener('click', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+        
+        eraser.addEventListener('click', () => {
+            isErasing = !isErasing;
+            if (isErasing) {
+                eraser.classList.add('bg-yellow-500');
+                eraser.classList.remove('bg-blue-500');
+
+            } else {
+                eraser.classList.remove('bg-yellow-500');
+                eraser.classList.add('bg-blue-500');
+            }
+        });
+
+                        let startX, startY;
+
+        function draw(e) {
+            if (!isPainting) return;
+
+            if (currentToolType === 'pencil') {
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                if(isErasing){
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.fillStyle = '#ffffff';
+                } else {
+                    ctx.strokeStyle = currentColor;
+                    ctx.fillStyle = currentColor;
+                }
+                ctx.lineWidth = currentBrushSize;
+
+                switch (currentBrushType) {
+                    case 'normal':
+                        ctx.beginPath();
+                        ctx.moveTo(lastX, lastY);
+                        ctx.lineTo(e.offsetX, e.offsetY);
+                        ctx.stroke();
+                        [lastX, lastY] = [e.offsetX, e.offsetY];
+                        break;
+                    case 'spray':
+                         for (let i = 0; i < 10; i++) {
+                            const offsetX = Math.random() * currentBrushSize - currentBrushSize / 2;
+                            const offsetY = Math.random() * currentBrushSize - currentBrushSize / 2;
+                            ctx.fillRect(e.offsetX + offsetX, e.offsetY + offsetY, 2, 2);
+                        }
+                        break;
+                    case 'pencil':
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(lastX, lastY);
+                        ctx.lineTo(e.offsetX, e.offsetY);
+                        ctx.stroke();
+                        [lastX, lastY] = [e.offsetX, e.offsetY];
+                        break;
+                }
+            } else {
+                tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+                let endX = e.offsetX;
+                let endY = e.offsetY;
+
+                // Create a new canvas to draw the shape on
+                const shapeCanvas = document.createElement('canvas');
+                const shapeCtx = shapeCanvas.getContext('2d');
+                shapeCanvas.width = canvas.width;
+                shapeCanvas.height = canvas.height;
+
+                shapeCtx.strokeStyle = currentColor;
+                shapeCtx.lineWidth = currentBrushSize;
+                shapeCtx.beginPath();
+
+                if (currentToolType === 'line') {
+                    shapeCtx.moveTo(startX, startY);
+                    shapeCtx.lineTo(endX, endY);
+                } else if (currentToolType === 'rectangle') {
+                    shapeCtx.rect(startX, startY, endX - startX, endY - startY);
+                } else if (currentToolType === 'circle') {
+                    let radius = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+                    shapeCtx.arc(startX, startY, radius, 0, 2 * Math.PI);
+                }
+                shapeCtx.stroke();
+
+                // Draw the shape canvas to the temp canvas
+                tempCtx.drawImage(shapeCanvas, 0, 0);
+            }
+        }
+            if (!isPainting) return;
+
+            if (currentToolType === 'pencil') {
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                if(isErasing){
+                    ctx.strokeStyle = '#ffffff';
+                } else {
+                    ctx.strokeStyle = currentColor;
+                }
+                ctx.lineWidth = currentBrushSize;
+
+                switch (currentBrushType) {
+                    case 'normal':
+                        ctx.beginPath();
+                        ctx.moveTo(lastX, lastY);
+                        ctx.lineTo(e.offsetX, e.offsetY);
+                        ctx.stroke();
+                        [lastX, lastY] = [e.offsetX, e.offsetY];
+                        break;
+                    case 'spray':
+                         for (let i = 0; i < 10; i++) {
+                            const offsetX = Math.random() * currentBrushSize - currentBrushSize / 2;
+                            const offsetY = Math.random() * currentBrushSize - currentBrushSize / 2;
+                            ctx.fillStyle = currentColor;
+                            ctx.fillRect(e.offsetX + offsetX, e.offsetY + offsetY, 2, 2);
+                        }
+                        break;
+                    case 'pencil':
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(lastX, lastY);
+                        ctx.lineTo(e.offsetX, e.offsetY);
+                        ctx.stroke();
+                        [lastX, lastY] = [e.offsetX, e.offsetY];
+                        break;
+                }
+            } else {
+                tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+                let endX = e.offsetX;
+                let endY = e.offsetY;
+                tempCtx.strokeStyle = currentColor;
+                tempCtx.lineWidth = currentBrushSize;
+                tempCtx.beginPath();
+                if (currentToolType === 'line') {
+                    tempCtx.moveTo(startX, startY);
+                    tempCtx.lineTo(endX, endY);
+                } else if (currentToolType === 'rectangle') {
+                    tempCtx.rect(startX, startY, endX - startX, endY - startY);
+                } else if (currentToolType === 'circle') {
+                    let radius = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+                    tempCtx.arc(startX, startY, radius, 0, 2 * Math.PI);
+                }
+                tempCtx.stroke();
+            }
+        }
+
+                let isTempCanvasInDom = false;
+
+        canvas.addEventListener('mousedown', (e) => {
+            isPainting = true;
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+            startX = e.offsetX;
+            startY = e.offsetY;
+
+            if (currentToolType !== 'pencil' && !isTempCanvasInDom) {
+                document.body.appendChild(tempCanvas);
+                tempCanvas.style.position = 'absolute';
+                tempCanvas.style.left = canvas.offsetLeft + 'px';
+                tempCanvas.style.top = canvas.offsetTop + 'px';
+                tempCanvas.style.pointerEvents = 'none';
+                isTempCanvasInDom = true;
+            }
+        });
+
+        canvas.addEventListener('mousemove', draw);
+
+        canvas.addEventListener('mouseup', (e) => {
+            isPainting = false;
+            if (currentToolType !== 'pencil') {
+                ctx.drawImage(tempCanvas, 0, 0);
+                tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+                if (isTempCanvasInDom) {
+                    document.body.removeChild(tempCanvas);
+                    isTempCanvasInDom = false;
+                }
+            }
+            saveState();
+        });
+
+        canvas.addEventListener('mousemove', draw);
+
+        canvas.addEventListener('mouseup', (e) => {
+            isPainting = false;
+            if (currentToolType !== 'pencil') {
+                ctx.drawImage(tempCanvas, 0, 0);
+                tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+                document.body.removeChild(tempCanvas);
+            }
+            saveState();
+        });
+
+
+        }
+
+
+        }
+
+
+
+        const undoButton = document.getElementById('undo');
+        const redoButton = document.getElementById('redo');
+
+        function saveState() {
+            if (historyIndex < history.length - 1) {
+                history.splice(historyIndex + 1);
+            }
+            history.push(canvas.toDataURL());
+            historyIndex++;
+        }
+
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                const img = new Image();
+                img.src = history[historyIndex];
+                img.onload = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                }
+            }
+        }
+
+        function redo() {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                const img = new Image();
+                img.src = history[historyIndex];
+                img.onload = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                }
+            }
+        }
+
+        undoButton.addEventListener('click', undo);
+        redoButton.addEventListener('click', redo);
+
+        saveState(); // Save initial state
+
+
+        const saveButton = document.getElementById('save');
+        saveButton.addEventListener('click', () => {
+            const dataURL = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = dataURL;
+            link.download = 'painting.png';
+            link.click();
+        });
+    </script>
+
+</body>
+</html>
