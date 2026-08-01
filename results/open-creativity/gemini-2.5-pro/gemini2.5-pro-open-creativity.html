@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmic Explorer</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        #planet-details {
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        #planet-image img {
+            animation: fadeIn 1s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-sans">
+    <canvas id="star-canvas" class="fixed top-0 left-0 w-full h-full z-[-1]"></canvas>
+
+    <header class="text-center py-8">
+        <h1 class="text-5xl font-bold">Cosmic Explorer</h1>
+    </header>
+
+    <main class="container mx-auto px-4">
+        <div id="planet-info" class="flex flex-col md:flex-row items-center justify-center">
+            <div id="planet-image" class="w-full md:w-1/2"></div>
+            <div id="planet-details" class="w-full md:w-1/2 p-8"></div>
+        </div>
+    </main>
+
+    <nav class="container mx-auto px-4 py-8">
+        <ul id="planet-nav" class="flex justify-center space-x-4">
+        </ul>
+    </nav>
+
+    <script>
+        const planets = [
+            {
+                name: "Earth",
+                image: "https://cdn.pixabay.com/photo/2016/10/20/18/35/earth-1756274_960_720.jpg",
+                description: "Our home planet, the third from the Sun. Earth is the only planet known to have an atmosphere containing free oxygen, oceans of liquid water on its surface, and, of course, life.",
+                details: {
+                    moons: 1,
+                    year: "365.25 days",
+                    radius: "6,371 km"
+                }
+            },
+            {
+                name: "Mars",
+                image: "https://cdn.pixabay.com/photo/2017/02/01/10/45/mars-2029949_960_720.jpg",
+                description: "The 'Red Planet' is the fourth planet from the Sun. It's a cold, desert-like world with a very thin atmosphere. Mars is home to the largest volcano in the solar system, Olympus Mons.",
+                details: {
+                    moons: 2,
+                    year: "687 days",
+                    radius: "3,389.5 km"
+                }
+            },
+            {
+                name: "Jupiter",
+                image: "https://cdn.pixabay.com/photo/2016/11/29/05/17/jupiter-1867493_960_720.jpg",
+                description: "The largest planet in our solar system, a gas giant with a Great Red Spot, a storm larger than Earth. Jupiter has a strong magnetic field and dozens of moons.",
+                details: {
+                    moons: 79,
+                    year: "4,333 days",
+                    radius: "69,911 km"
+                }
+            }
+        ];
+
+        const planetInfo = document.getElementById("planet-info");
+        const planetImage = document.getElementById("planet-image");
+        const planetDetails = document.getElementById("planet-details");
+        const planetNav = document.getElementById("planet-nav");
+
+        function showPlanet(planet) {
+            planetImage.innerHTML = `<img src="${planet.image}" alt="${planet.name}" class="rounded-full w-64 h-64 mx-auto shadow-lg">`;
+            planetDetails.innerHTML = `
+                <h2 class="text-4xl font-bold mb-4">${planet.name}</h2>
+                <p class="text-lg mb-4">${planet.description}</p>
+                <ul class="text-lg">
+                    <li><strong>Moons:</strong> ${planet.details.moons}</li>
+                    <li><strong>Year Length:</strong> ${planet.details.year}</li>
+                    <li><strong>Radius:</strong> ${planet.details.radius}</li>
+                </ul>
+            `;
+        }
+
+        function createNav() {
+            planets.forEach(planet => {
+                const li = document.createElement("li");
+                const button = document.createElement("button");
+                button.textContent = planet.name;
+                button.className = "px-4 py-2 rounded-full bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500";
+                button.addEventListener("click", () => showPlanet(planet));
+                li.appendChild(button);
+                planetNav.appendChild(li);
+            });
+        }
+
+        // Initial setup
+        createNav();
+        showPlanet(planets[0]); // Show Earth by default
+
+        // Starfield Canvas Animation
+        const canvas = document.getElementById('star-canvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let stars = [];
+
+        class Star {
+            constructor(x, y, size, speed) {
+                this.x = x;
+                this.y = y;
+                this.size = size;
+                this.speed = speed;
+            }
+
+            draw() {
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            update() {
+                this.y += this.speed;
+                if (this.y > canvas.height) {
+                    this.y = 0;
+                    this.x = Math.random() * canvas.width;
+                }
+            }
+        }
+
+        function initStars() {
+            for (let i = 0; i < 200; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const size = Math.random() * 2;
+                const speed = Math.random() * 0.5 + 0.1;
+                stars.push(new Star(x, y, size, speed));
+            }
+        }
+
+        function animateStars() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            stars.forEach(star => {
+                star.draw();
+                star.update();
+            });
+            requestAnimationFrame(animateStars);
+        }
+
+        initStars();
+        animateStars();
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            stars = [];
+            initStars();
+        });
+
+    </script>
+
+</body>
+</html>
