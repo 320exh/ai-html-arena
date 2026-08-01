@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Canvas - Interactive Generative Art</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #0a0a0a, #1a1a2e);
+            font-family: 'Arial', sans-serif;
+        }
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 0;
+        }
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        label {
+            color: #fff;
+            font-size: 12px;
+            font-weight: bold;
+            text-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+        }
+        input, select {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: #fff;
+            padding: 4px 8px;
+            outline: none;
+        }
+        input::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        input::-webkit-color-swatch {
+            border: none;
+            border-radius: 4px;
+        }
+        button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: #fff;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+        }
+        .fullscreen-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
+        }
+        .title {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            color: #fff;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="title">Neon Canvas</div>
+    <button class="fullscreen-btn" id="fullscreen-btn">⛶</button>
+    <canvas id="canvas"></canvas>
+    <div class="controls">
+        <div class="control-group">
+            <label for="color-picker">Color</label>
+            <input type="color" id="color-picker" value="#00ff88">
+        </div>
+        <div class="control-group">
+            <label for="size-slider">Size</label>
+            <input type="range" id="size-slider" min="1" max="20" value="5">
+        </div>
+        <div class="control-group">
+            <label for="speed-slider">Speed</label>
+            <input type="range" id="speed-slider" min="1" max="10" value="3">
+        </div>
+        <div class="control-group">
+            <label for="trail-slider">Trail</label>
+            <input type="range" id="trail-slider" min="10" max="100" value="30">
+        </div>
+        <div class="control-group">
+            <label for="shape-select">Shape</label>
+            <select id="shape-select">
+                <option value="circle">Circle</option>
+                <option value="square">Square</option>
+                <option value="triangle">Triangle</option>
+            </select>
+        </div>
+        <button id="clear-btn">Clear</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const colorPicker = document.getElementById('color-picker');
+            const sizeSlider = document.getElementById('size-slider');
+            const speedSlider = document.getElementById('speed-slider');
+            const trailSlider = document.getElementById('trail-slider');
+            const shapeSelect = document.getElementById('shape-select');
+            const clearBtn = document.getElementById('clear-btn');
+            const fullscreenBtn = document.getElementById('fullscreen-btn');
+
+            // Set canvas size
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            // Fullscreen toggle
+            fullscreenBtn.addEventListener('click', () => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        console.error('Fullscreen error:', err);
+                    });
+                } else {
+                    document.exitFullscreen();
+                }
+            });
+
+            // Particle class
+            class Particle {
+                constructor(x, y, color, size, speed, trail, shape) {
+                    this.x = x;
+                    this.y = y;
+                    this.baseX = x;
+                    this.baseY = y;
+                    this.color = color;
+                    this.size = size;
+                    this.speed = speed;
+                    this.trail = trail;
+                    this.shape = shape;
+                    this.history = [];
+                    this.maxHistory = trail;
+                    this.velocityX = (Math.random() - 0.5) * speed;
+                    this.velocityY = (Math.random() - 0.5) * speed;
+                }
+
+                update() {
+                    this.x += this.velocityX;
+                    this.y += this.velocityY;
+
+                    // Bounce off edges
+                    if (this.x <= 0 || this.x >= canvas.width) this.velocityX *= -1;
+                    if (this.y <= 0 || this.y >= canvas.height) this.velocityY *= -1;
+
+                    // Store history
+                    this.history.push({ x: this.x, y: this.y });
+                    if (this.history.length > this.maxHistory) {
+                        this.history.shift();
+                    }
+                }
+
+                draw() {
+                    // Draw trail
+                    if (this.history.length > 1) {
+                        ctx.beginPath();
+                        ctx.moveTo(this.history[0].x, this.history[0].y);
+                        for (let i = 1; i < this.history.length; i++) {
+                            const alpha = i / this.history.length;
+                            ctx.strokeStyle = this.color.replace(')', `, ${1 - alpha * 0.8})`).replace('rgb', 'rgba');
+                            ctx.lineWidth = this.size * (1 - alpha * 0.7);
+                            ctx.lineTo(this.history[i].x, this.history[i].y);
+                            ctx.stroke();
+                        }
+                    }
+
+                    // Draw particle
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    if (this.shape === 'circle') {
+                        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    } else if (this.shape === 'square') {
+                        ctx.rect(this.x - this.size, this.y - this.size, this.size * 2, this.size * 2);
+                    } else if (this.shape === 'triangle') {
+                        ctx.moveTo(this.x, this.y - this.size);
+                        ctx.lineTo(this.x - this.size, this.y + this.size);
+                        ctx.lineTo(this.x + this.size, this.y + this.size);
+                        ctx.closePath();
+                    }
+                    ctx.fill();
+                }
+            }
+
+            // Particles array
+            let particles = [];
+            let isDrawing = false;
+
+            // Mouse/touch events
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                startDrawing(e.touches[0]);
+            });
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                draw(e.touches[0]);
+            });
+            canvas.addEventListener('touchend', stopDrawing);
+
+            function startDrawing(e) {
+                isDrawing = true;
+                createParticle(e.clientX, e.clientY);
+            }
+
+            function draw(e) {
+                if (!isDrawing) return;
+                createParticle(e.clientX, e.clientY);
+            }
+
+            function stopDrawing() {
+                isDrawing = false;
+            }
+
+            function createParticle(x, y) {
+                const color = colorPicker.value;
+                const size = parseInt(sizeSlider.value);
+                const speed = parseInt(speedSlider.value);
+                const trail = parseInt(trailSlider.value);
+                const shape = shapeSelect.value;
+                particles.push(new Particle(x, y, color, size, speed, trail, shape));
+            }
+
+            // Clear canvas
+            clearBtn.addEventListener('click', () => {
+                particles = [];
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            });
+
+            // Animation loop
+            function animate() {
+                // Fade effect
+                ctx.fillStyle = 'rgba(10, 10, 10, 0.05)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Update and draw particles
+                for (let i = 0; i < particles.length; i++) {
+                    particles[i].update();
+                    particles[i].draw();
+                    
+                    // Remove particles that are out of bounds or too old
+                    if (particles[i].history.length > particles[i].maxHistory * 2) {
+                        particles.splice(i, 1);
+                        i--;
+                    }
+                }
+
+                requestAnimationFrame(animate);
+            }
+            animate();
+        });
+    </script>
+</body>
+</html>
