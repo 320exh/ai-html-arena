@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ultra Cool Single-File Web App</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"></script>
+</head>
+<body class="bg-purple-700">
+  <!-- Animated Hero Section -->
+  <section class="container mx-auto py-24 text-center animate-pulse">
+    <h1 class="text-6xl font-bold text-white sm:text-8xl underline-delimiter adjust-underline">Meet the UltraCool App</h1>
+    <p class="mt-4 text-3xl font-light text-gray-100">A futuristic, single‑file web experience powered by Tailwind CSS.</p>
+    <a href="#features" class="mt-6 inline-block bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 py-3 rounded-lg transition duration-200 focus:outline-none focus:shadow-outline">Explore Features</a>
+  </section>
+
+  <!-- Features Carousel -->
+  <section id="features" class="container mx-auto mt-20 p-6 bg-gray-50 rounded-lg shadow-lg">
+    <h2 class="text-4xl font-bold text-gray-800 mb-8">Features</h2>
+    <div class="grid gap-6 md:grid-cols-3 lg:grid-cols-4 px-4">
+      <!-- Feature 1 -->
+      <div class="p-6 bg-white shadow-lg rounded-lg animate-fade-in">
+        <svg class="w-12 h-12 text-purple-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 3h7.25a2 2 0 0 0 2 2h2a4 4 0 0 0 4-4h8a2 2 0 0 0 2 2v18a2 2 0 0 0-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
+        </svg>
+        <h3 class="text-xl font-semibold mb-2">Dynamic UI Animations</h3>
+        <p class="text-gray-600">Smooth, delightful motion with Tailwind's transition utilities.</p>
+      </div>
+      <!-- Feature 2 -->
+      <div class="p-6 bg-white shadow-lg rounded-lg animate-fade-in" data-aos="fade-right">
+        <svg class="w-12 h-12 text-cyan-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M10 9V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v5l-5 5a2 2 0 0 0 2 2h5v5a2 2 0 0 0 2 2h5a2 2 0 0 0 2-2V9z"/>
+        </svg>
+        <h3 class="text-xl font-semibold mb-2">Live Dark/Light Mode Toggle</h3>
+        <p class="text-gray-600">Adaptive color scheme that reacts instantly to user preference.</p>
+      </div>
+      <!-- Feature 3 -->
+      <div class="p-6 bg-white shadow-lg rounded-lg animate-fade-in" data-aos="fade-left">
+        <svg class="w-12 h-12 text-pink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 12h18M3 9l9 6 9-6"/>
+        </svg>
+        <h3 class="text-xl font-semibold mb-2">Zero‑Config SVG Icons</h3>
+        <p class="text-gray-600">Embedded SVG icons styled with Tailwind utility classes.</p>
+      </div>
+      <!-- Feature 4 -->
+      <div class="p-6 bg-white shadow-lg rounded-lg animate-fade-in" data-aos="fade-up">
+        <svg class="w-12 h-12 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 2a7 7 0 0 1 7 7m-14 0a7 7 0 0 1 7 7m0 12a7 7 0 0 1-7 7m7-19V0"/>
+        </svg>
+        <h3 class="text-xl font-semibold mb-2">Performance‑Optimized Bundling</h3>
+        <p class="text-gray-600">Tailwind's purgeCSS removes unused styles for a tiny final bundle.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer Section -->
+  <footer class="container mx-auto mt-12 px-4 py-4 bg-gray-800 text-white text-center">
+    <p>UltraCool – © 2025 Made with Tailwind CSS &lt;3</p>
+    <a href="https://tailwindcss.com" class="underline hover:text-indigo-600">Tailwind CSS Docs</a>
+  </footer>
+
+  <!-- AOS JavaScript for animated carousel -->
+  <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+  <script>
+    // Initialize AOS after DOMContentLoaded
+    document.addEventListener('DOMContentLoaded', () => {
+      AOS.init({
+        duration: 800,
+        easing: 'ease-in-out-back'
+      });
+    });
+  </script>
+</body>
+</html>
