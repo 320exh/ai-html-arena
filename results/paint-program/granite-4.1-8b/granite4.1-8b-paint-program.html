@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>HTML5 Paint App</title>
+<style>
+  body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f0f0; }
+  #canvas { border: 2px solid #333; }
+  .toolbar { display: flex; gap: 10px; padding: 10px; background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+  .toolbar button { padding: 5px 10px; font-size: 1rem; cursor: pointer; }
+</style>
+</head>
+<body>
+<canvas id="canvas" width="800" height="600"></canvas>
+<div class="toolbar">
+  <!-- Brush Color Picker -->
+  <input type="color" id="colorPicker" value="#ff0000" />
+  <!-- Brush Size Slider -->
+  <input type="range" id="brushSize" min="1" max="30" value="5" />
+  <!-- Brush Tools Buttons -->
+  <button id="pencil">Pencil</button>
+  <button id="eraser">Eraser</button>
+  <button id="bucket">Fill</button>
+  <button id="undo">Undo</button>
+  <button id="clear">Clear</button>
+  <button id="save">Save</button>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+// Load initial image (optional background)
+const bgImg = new Image();
+bgImg.src = 'https://via.placeholder.com/800x600.png?text=Canvas';
+bgImg.onload = () => ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+
+// State management
+let drawing = false;
+let currentColor = '#000000';
+let brushSize = 5;
+let isEraser = false;
+let isFill = false;
+let undoStack = [];
+let currentTool = 'pencil';
+
+// Update UI based on selected tool
+const setTool = (tool) => {
+  currentTool = tool;
+  isEraser = tool === 'eraser';
+  isFill = tool === 'bucket';
+};
+
+// Reset drawing context when switching tools
+const reset = () => {
+  ctx.beginPath();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = brushSize;
+};
+
+// Event listeners
+const colorPicker = document.getElementById('colorPicker');
+const brushSizeInput = document.getElementById('brushSize');
+const toolbar = document.querySelector('.toolbar');
+
+// Toolbar button clicks
+toolbar.addEventListener('click', (e) => {
+  if (e.target.id) setTool(e.target.id);
+});
+
+// Color picker change
+colorPicker.addEventListener('input', () => currentColor = colorPicker.value);
+
+// Brush size change
+brushSizeInput.addEventListener('input', () => {
+  brushSize = Number(brushSizeInput.value);
+  ctx.lineWidth = brushSize;
+});
+
+// Touch and mouse handling
+let startX, startY, isDown;
+const handleDown = (e) => {
+  isDown = true;
+  startX = e.clientX;
+  startY = e.clientY;
+  drawing = true;
+  reset();
+  if (isFill) fillArea(e);
+};
+
+const handleMove = (e) => {
+  if (!isDown || !drawing) return;
+  ctx.strokeStyle = currentColor;
+  if (isEraser) ctx.globalCompositeOperation = 'destination-out'; else ctx.globalCompositeOperation = 'source-over';
+  ctx.beginPath();
+  ctx.moveTo(startX, startY);
+  ctx.lineTo(e.clientX, e.clientY);
+  ctx.stroke();
+  ctx.globalCompositeOperation = 'source-over'; // reset for future strokes
+  startX = e.clientX;
+  startY = e.clientY;
+};
+
+const handleUp = () => {
+  isDown = false;
+  if (!isFill) {
+    undoStack.push({ path: ctx.getImageData(0, 0, canvas.width, canvas.height) });
+  }
+};
+
+// Fill area implementation
+const fillArea = (e) => {
+  const posX = e.clientX;
+  const posY = e.clientY;
+  const imageData = ctx.getImageData(posX, posY, 1, 1);
+  const { data } = imageData;
+  const targetColor = data.slice(0, 4);
+  const floodFill = (x, y) => {
+    const queue = [[x, y]];
+    while (queue.length) {
+      const [cx, cy] = queue.shift();
+      if (cx < 0 || cx >= canvas.width || cy < 0 || cy >= canvas.height) continue;
+      const sample = ctx.getImageData(cx, cy, 1, 1).data;
+      if (
+        sample[0] === targetColor[0] &&
+        sample[1] === targetColor[1] &&
+        sample[2] === targetColor[2]
+      ) {
+        continue;
+      }
+      ctx.fillStyle = currentColor;
+      ctx.fillRect(cx, cy, 1, 1);
+      queue.push([cx + 1, cy]);
+      queue.push([cx - 1, cy]);
+      queue.push([cx, cy + 1]);
+      queue.push([cx, cy - 1]);
+    }
+  };
+  floodFill(posX, posY);
+  isFill = false;
+};
+
+// Mouse events
+canvas.addEventListener('mousedown', handleDown);
+canvas.addEventListener('mousemove', handleMove);
+canvas.addEventListener('mouseup', handleUp);
+canvas.addEventListener('mouseleave', handleUp);
+
+// Touch events
+let touchX, touchY;
+canvas.addEventListener('touchstart', (e) => {
+  const touch = e.touches[0];
+  touchX = touch.clientX;
+  touchY = touch.clientY;
+  handleDown({ clientX: touchX, clientY: touchY });
+}, { passive: false });
+canvas.addEventListener('touchmove', (e) => {
+  const touch = e.touches[0];
+  handleMove({ clientX: touchX + touch.clientX, clientY: touchY + touch.clientY });
+}, { passive: false });
+canvas.addEventListener('touchend', handleUp);
+
+// Undo functionality
+const undo = () => {
+  if (undoStack.length) {
+    ctx.putImageData(undoStack.pop(), 0, 0);
+  }
+};
+const undoButton = document.getElementById('undo');
+undoButton.addEventListener('click', undo);
+
+// Clear canvas
+const clear = () => {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(bgImg, 0, 0);
+};
+const clearButton = document.getElementById('clear');
+clearButton.addEventListener('click', clear);
+
+// Save canvas as PNG
+const save = () => {
+  const link = document.createElement('a');
+  link.download = 'my-paint.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+};
+const saveButton = document.getElementById('save');
+saveButton.addEventListener('click', save);
+
+// Initial tool selection
+setTool('pencil');
+</script>
+</body>
+</html>
