@@ -4,7 +4,7 @@ A side-by-side comparison of how different AI models perform at generating singl
 
 | Prompt | File | What it tests |
 |--------|------|---------------|
-| Paint program | `prompts/paint-program.md` | **Execution accuracy** — can the model build a fully featured paint program in one HTML file on the first try? |
+| Paint program | `prompts/paint-program.md` | **Execution accuracy** — how well can the model execute a simple, specific task in a single HTML file on the first try? |
 | Open creativity | `prompts/open-creativity.md` | **Creative capability** — how creative and impressive can the model be with a single-file HTML project? |
 
 ## Methodology
