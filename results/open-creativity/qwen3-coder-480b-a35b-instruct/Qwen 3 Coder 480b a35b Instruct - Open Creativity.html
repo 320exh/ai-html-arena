@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmic Particle Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(0, 0, 30, 0.7);
+            backdrop-filter: blur(5px);
+            border-bottom: 1px solid rgba(100, 100, 255, 0.3);
+            z-index: 10;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 10px rgba(79, 172, 254, 0.5);
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.8;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .container {
+            display: flex;
+            flex: 1;
+            position: relative;
+        }
+        
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 10, 30, 0.7);
+            padding: 15px;
+            border-radius: 15px;
+            border: 1px solid rgba(100, 150, 255, 0.3);
+            backdrop-filter: blur(5px);
+            z-index: 10;
+            max-width: 300px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: 100px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 242, 254, 0.4);
+        }
+        
+        .stats {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 10, 30, 0.7);
+            padding: 15px;
+            border-radius: 15px;
+            border: 1px solid rgba(100, 150, 255, 0.3);
+            backdrop-filter: blur(5px);
+            z-index: 10;
+            font-size: 0.9rem;
+        }
+        
+        .particle-count {
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: linear-gradient(90deg, #ff7e5f, #feb47b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(0, 0, 30, 0.7);
+            backdrop-filter: blur(5px);
+            border-top: 1px solid rgba(100, 100, 255, 0.3);
+            font-size: 0.9rem;
+            opacity: 0.7;
+            z-index: 10;
+        }
+        
+        @media (max-width: 768px) {
+            .controls, .stats {
+                position: relative;
+                max-width: 100%;
+                margin: 10px;
+                bottom: auto;
+                left: auto;
+                top: auto;
+                right: auto;
+            }
+            
+            .container {
+                flex-direction: column;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Cosmic Particle Simulator</h1>
+        <p class="subtitle">Interacting particles under gravitational and electromagnetic forces. Click and drag to create particle clusters!</p>
+    </header>
+    
+    <div class="container">
+        <canvas id="canvas"></canvas>
+        
+        <div class="stats">
+            <div>Particles: <span id="particleCount" class="particle-count">0</span></div>
+            <div>FPS: <span id="fpsCounter">0</span></div>
+            <div>Mode: <span id="modeIndicator">Gravity</span></div>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="particleCount">Particle Count: <span id="countValue">150</span></label>
+                <input type="range" id="particleCount" min="50" max="500" value="150">
+            </div>
+            
+            <div class="control-group">
+                <label for="gravityStrength">Gravity Strength: <span id="gravityValue">0.5</span></label>
+                <input type="range" id="gravityStrength" min="0" max="2" step="0.1" value="0.5">
+            </div>
+            
+            <div class="control-group">
+                <label for="repulsionStrength">Repulsion Strength: <span id="repulsionValue">0.8</span></label>
+                <input type="range" id="repulsionStrength" min="0" max="2" step="0.1" value="0.8">
+            </div>
+            
+            <div class="buttons">
+                <button id="resetBtn">Reset Particles</button>
+                <button id="toggleMode">Toggle Mode</button>
+                <button id="addCluster">Add Cluster</button>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>Interactive Physics Simulation | Created with HTML5 Canvas and JavaScript</p>
+    </footer>
+
+    <script>
+        // Canvas setup
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Set canvas to full window size
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight - document.querySelector('header').offsetHeight - document.querySelector('footer').offsetHeight;
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        // Particle class
+        class Particle {
+            constructor(x, y, charge = 0) {
+                this.x = x || Math.random() * canvas.width;
+                this.y = y || Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.radius = Math.random() * 3 + 1;
+                this.charge = charge || (Math.random() > 0.5 ? 1 : -1); // Positive or negative
+                this.mass = this.radius * 0.5;
+                this.color = this.charge > 0 ? 
+                    `hsl(${Math.random() * 30 + 10}, 100%, 70%)` : // Warm colors for positive
+                    `hsl(${Math.random() * 60 + 180}, 100%, 70%)`; // Cool colors for negative
+                this.trail = [];
+                this.maxTrail = 10;
+            }
+            
+            draw() {
+                // Draw trail
+                for (let i = 0; i < this.trail.length; i++) {
+                    const alpha = i / this.trail.length;
+                    const point = this.trail[i];
+                    
+                    ctx.beginPath();
+                    ctx.arc(point.x, point.y, this.radius * alpha, 0, Math.PI * 2);
+                    ctx.fillStyle = this.color.replace('70%', `${Math.floor(30 + 40 * alpha)}%`);
+                    ctx.fill();
+                }
+                
+                // Draw particle
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                
+                // Add glow effect
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius * 2, 0, Math.PI * 2);
+                const gradient = ctx.createRadialGradient(
+                    this.x, this.y, this.radius,
+                    this.x, this.y, this.radius * 2
+                );
+                gradient.addColorStop(0, this.color.replace('70%', '80%'));
+                gradient.addColorStop(1, this.color.replace('70%', '0%'));
+                ctx.fillStyle = gradient;
+                ctx.fill();
+            }
+            
+            update(particles) {
+                // Update trail
+                this.trail.push({x: this.x, y: this.y});
+                if (this.trail.length > this.maxTrail) {
+                    this.trail.shift();
+                }
+                
+                // Apply forces from other particles
+                for (let other of particles) {
+                    if (other === this) continue;
+                    
+                    const dx = other.x - this.x;
+                    const dy = other.y - this.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 5) continue; // Avoid extreme forces at very close distances
+                    
+                    // Normalize direction
+                    const nx = dx / distance;
+                    const ny = dy / distance;
+                    
+                    // Gravitational force (always attractive)
+                    const gravityForce = (this.mass * other.mass) / (distance * distance);
+                    
+                    // Electromagnetic force (attractive for opposite charges, repulsive for same charges)
+                    const electromagneticForce = (this.charge * other.charge) / (distance * distance);
+                    
+                    // Apply forces
+                    const totalForce = gravityStrength * gravityForce - repulsionStrength * electromagneticForce;
+                    
+                    this.vx += nx * totalForce / this.mass * 0.5;
+                    this.vy += ny * totalForce / this.mass * 0.5;
+                }
+                
+                // Update position
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                // Boundary conditions (wrap around)
+                if (this.x < 0) this.x = canvas.width;
+                if (this.x > canvas.width) this.x = 0;
+                if (this.y < 0) this.y = canvas.height;
+                if (this.y > canvas.height) this.y = 0;
+            }
+        }
+        
+        // Simulation variables
+        let particles = [];
+        let particleCount = 150;
+        let gravityStrength = 0.5;
+        let repulsionStrength = 0.8;
+        let mode = 'gravity'; // 'gravity' or 'electro'
+        let mouseX = 0;
+        let mouseY = 0;
+        let mouseDown = false;
+        let lastTime = 0;
+        let fps = 0;
+        
+        // Initialize particles
+        function initParticles(count) {
+            particles = [];
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle());
+            }
+            document.getElementById('particleCount').value = count;
+            document.getElementById('countValue').textContent = count;
+        }
+        
+        // Create particle cluster
+        function createCluster(x, y, count) {
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * 50;
+                const px = x + Math.cos(angle) * distance;
+                const py = y + Math.sin(angle) * distance;
+                particles.push(new Particle(px, py));
+            }
+        }
+        
+        // Animation loop
+        function animate(timestamp) {
+            // Calculate FPS
+            if (lastTime) {
+                const delta = (timestamp - lastTime) / 1000;
+                fps = Math.round(1 / delta);
+            }
+            lastTime = timestamp;
+            
+            // Clear canvas with a semi-transparent black for trail effect
+            ctx.fillStyle = 'rgba(0, 0, 10, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Update and draw particles
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update(particles);
+                particles[i].draw();
+            }
+            
+            // Draw connections between close particles
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const p1 = particles[i];
+                    const p2 = particles[j];
+                    const dx = p1.x - p2.x;
+                    const dy = p1.y - p2.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < 100) {
+                        const alpha = 1 - dist / 100;
+                        ctx.beginPath();
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        
+                        // Color based on charges
+                        if (p1.charge === p2.charge) {
+                            ctx.strokeStyle = `rgba(255, 100, 100, ${alpha * 0.3})`;
+                        } else {
+                            ctx.strokeStyle = `rgba(100, 200, 255, ${alpha * 0.3})`;
+                        }
+                        
+                        ctx.stroke();
+                    }
+                }
+            }
+            
+            // Update UI
+            document.getElementById('particleCount').textContent = particles.length;
+            document.getElementById('fpsCounter').textContent = fps;
+            document.getElementById('modeIndicator').textContent = 
+                mode === 'gravity' ? 'Gravity Dominant' : 'Electro Dominant';
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // Event listeners for controls
+        document.getElementById('particleCount').addEventListener('input', function() {
+            const count = parseInt(this.value);
+            document.getElementById('countValue').textContent = count;
+            initParticles(count);
+        });
+        
+        document.getElementById('gravityStrength').addEventListener('input', function() {
+            gravityStrength = parseFloat(this.value);
+            document.getElementById('gravityValue').textContent = gravityStrength.toFixed(1);
+        });
+        
+        document.getElementById('repulsionStrength').addEventListener('input', function() {
+            repulsionStrength = parseFloat(this.value);
+            document.getElementById('repulsionValue').textContent = repulsionStrength.toFixed(1);
+        });
+        
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            initParticles(particleCount);
+        });
+        
+        document.getElementById('toggleMode').addEventListener('click', function() {
+            mode = mode === 'gravity' ? 'electro' : 'gravity';
+            gravityStrength = mode === 'gravity' ? 0.5 : 0.1;
+            repulsionStrength = mode === 'electro' ? 1.2 : 0.8;
+            
+            document.getElementById('gravityStrength').value = gravityStrength;
+            document.getElementById('repulsionStrength').value = repulsionStrength;
+            document.getElementById('gravityValue').textContent = gravityStrength.toFixed(1);
+            document.getElementById('repulsionValue').textContent = repulsionStrength.toFixed(1);
+        });
+        
+        document.getElementById('addCluster').addEventListener('click', function() {
+            createCluster(
+                Math.random() * canvas.width,
+                Math.random() * canvas.height,
+                20
+            );
+        });
+        
+        // Mouse interaction
+        canvas.addEventListener('mousemove', function(e) {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+        
+        canvas.addEventListener('mousedown', function() {
+            mouseDown = true;
+            createCluster(mouseX, mouseY, 15);
+        });
+        
+        canvas.addEventListener('mouseup', function() {
+            mouseDown = false;
+        });
+        
+        canvas.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            mouseX = touch.clientX;
+            mouseY = touch.clientY;
+            createCluster(mouseX, mouseY, 15);
+        });
+        
+        // Start simulation
+        initParticles(particleCount);
+        animate();
+    </script>
+</body>
+</html>
