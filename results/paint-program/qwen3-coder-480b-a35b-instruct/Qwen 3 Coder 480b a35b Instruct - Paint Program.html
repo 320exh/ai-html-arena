@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paint Program</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .tool-btn {
+            transition: all 0.2s ease;
+        }
+        .tool-btn:hover {
+            transform: scale(1.05);
+        }
+        .tool-btn.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .color-option {
+            transition: transform 0.2s ease;
+        }
+        .color-option:hover {
+            transform: scale(1.2);
+        }
+        .color-option.active {
+            border: 2px solid #3b82f6;
+            transform: scale(1.2);
+        }
+        canvas {
+            cursor: crosshair;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .brush-preview {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 h-screen flex flex-col">
+    <!-- Header -->
+    <header class="bg-white shadow-md p-4 flex justify-between items-center">
+        <h1 class="text-2xl font-bold text-gray-800">Paint Program</h1>
+        <div class="flex space-x-2">
+            <button id="clearCanvas" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center">
+                <i class="fas fa-trash mr-2"></i> Clear
+            </button>
+            <button id="saveCanvas" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center">
+                <i class="fas fa-download mr-2"></i> Save
+            </button>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Toolbar -->
+        <div class="w-20 bg-white shadow-lg flex flex-col items-center py-4 space-y-6">
+            <!-- Tools -->
+            <div class="space-y-4">
+                <button id="pencilTool" class="tool-btn active w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-xl" title="Pencil">
+                    <i class="fas fa-pencil-alt"></i>
+                </button>
+                <button id="brushTool" class="tool-btn w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-xl" title="Brush">
+                    <i class="fas fa-paint-brush"></i>
+                </button>
+                <button id="eraserTool" class="tool-btn w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-xl" title="Eraser">
+                    <i class="fas fa-eraser"></i>
+                </button>
+                <button id="lineTool" class="tool-btn w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-xl" title="Line">
+                    <i class="fas fa-slash"></i>
+                </button>
+                <button id="rectangleTool" class="tool-btn w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-xl" title="Rectangle">
+                    <i class="far fa-square"></i>
+                </button>
+                <button id="circleTool" class="tool-btn w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-xl" title="Circle">
+                    <i class="far fa-circle"></i>
+                </button>
+                <button id="fillTool" class="tool-btn w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-xl" title="Fill">
+                    <i class="fas fa-fill"></i>
+                </button>
+            </div>
+
+            <!-- Brush Size -->
+            <div class="pt-4 border-t border-gray-200">
+                <input id="brushSize" type="range" min="1" max="50" value="5" orient="vertical" class="h-24">
+                <div class="text-center mt-2 text-sm text-gray-600">Size</div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col">
+            <!-- Color Palette -->
+            <div class="bg-white p-3 shadow-sm flex items-center">
+                <div class="flex space-x-2 mr-6">
+                    <div class="color-option active w-8 h-8 rounded-full bg-black cursor-pointer" data-color="#000000"></div>
+                    <div class="color-option w-8 h-8 rounded-full bg-red-500 cursor-pointer" data-color="#ef4444"></div>
+                    <div class="color-option w-8 h-8 rounded-full bg-blue-500 cursor-pointer" data-color="#3b82f6"></div>
+                    <div class="color-option w-8 h-8 rounded-full bg-green-500 cursor-pointer" data-color="#22c55e"></div>
+                    <div class="color-option w-8 h-8 rounded-full bg-yellow-500 cursor-pointer" data-color="#eab308"></div>
+                    <div class="color-option w-8 h-8 rounded-full bg-purple-500 cursor-pointer" data-color="#a855f7"></div>
+                    <div class="color-option w-8 h-8 rounded-full bg-pink-500 cursor-pointer" data-color="#ec4899"></div>
+                    <div class="color-option w-8 h-8 rounded-full bg-indigo-500 cursor-pointer" data-color="#6366f1"></div>
+                </div>
+                <div class="border-l border-gray-300 pl-6 flex items-center">
+                    <div class="mr-3 text-gray-700">Current:</div>
+                    <div id="currentColor" class="w-10 h-10 rounded-full bg-black border border-gray-300"></div>
+                </div>
+            </div>
+
+            <!-- Canvas Container -->
+            <div class="flex-1 overflow-auto bg-gray-200 p-4 relative">
+                <canvas id="paintCanvas" width="800" height="500" class="bg-white mx-auto"></canvas>
+                <div id="brushPreview" class="brush-preview"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Canvas setup
+        const canvas = document.getElementById('paintCanvas');
+        const ctx = canvas.getContext('2d');
+        const brushPreview = document.getElementById('brushPreview');
+        
+        // State variables
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let currentTool = 'pencil';
+        let currentColor = '#000000';
+        let brushSize = 5;
+        let startX, startY;
+        
+        // Set initial canvas background to white
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Tool buttons
+        const tools = ['pencil', 'brush', 'eraser', 'line', 'rectangle', 'circle', 'fill'];
+        tools.forEach(tool => {
+            const btn = document.getElementById(`${tool}Tool`);
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    // Remove active class from all tools
+                    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                    // Add active class to clicked tool
+                    btn.classList.add('active');
+                    currentTool = tool;
+                    
+                    // Update brush preview
+                    updateBrushPreview();
+                });
+            }
+        });
+        
+        // Color selection
+        document.querySelectorAll('.color-option').forEach(option => {
+            option.addEventListener('click', () => {
+                document.querySelectorAll('.color-option').forEach(o => o.classList.remove('active'));
+                option.classList.add('active');
+                currentColor = option.dataset.color;
+                document.getElementById('currentColor').style.backgroundColor = currentColor;
+                
+                // Update brush preview
+                updateBrushPreview();
+            });
+        });
+        
+        // Brush size
+        document.getElementById('brushSize').addEventListener('input', (e) => {
+            brushSize = e.target.value;
+            updateBrushPreview();
+        });
+        
+        // Clear canvas
+        document.getElementById('clearCanvas').addEventListener('click', () => {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        });
+        
+        // Save canvas
+        document.getElementById('saveCanvas').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'painting.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+        
+        // Drawing functions
+        function startDrawing(e) {
+            isDrawing = true;
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+            startX = e.offsetX;
+            startY = e.offsetY;
+            
+            // For fill tool
+            if (currentTool === 'fill') {
+                fillCanvas(e.offsetX, e.offsetY);
+            }
+        }
+        
+        function draw(e) {
+            if (!isDrawing || currentTool === 'fill') return;
+            
+            ctx.strokeStyle = currentTool === 'eraser' ? 'white' : currentColor;
+            ctx.lineWidth = brushSize;
+            ctx.lineCap = currentTool === 'pencil' ? 'round' : 'round';
+            ctx.lineJoin = 'round';
+            
+            if (currentTool === 'pencil' || currentTool === 'brush' || currentTool === 'eraser') {
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(e.offsetX, e.offsetY);
+                ctx.stroke();
+                [lastX, lastY] = [e.offsetX, e.offsetY];
+            }
+        }
+        
+        function stopDrawing() {
+            isDrawing = false;
+            
+            // For shape tools
+            if (currentTool === 'line' || currentTool === 'rectangle' || currentTool === 'circle') {
+                redrawCanvas();
+            }
+        }
+        
+        // Fill tool implementation
+        function fillCanvas(x, y) {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const targetColor = getPixelColor(imageData, x, y);
+            const fillColor = hexToRgb(currentColor);
+            
+            // If target color is same as fill color, do nothing
+            if (colorsMatch(targetColor, fillColor)) return;
+            
+            const stack = [{x, y}];
+            
+            while (stack.length) {
+                const point = stack.pop();
+                const {x, y} = point;
+                
+                // Check bounds
+                if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) continue;
+                
+                const currentColor = getPixelColor(imageData, x, y);
+                
+                // If we've hit a boundary pixel, stop
+                if (!colorsMatch(currentColor, targetColor)) continue;
+                
+                // Fill the pixel
+                setPixelColor(imageData, x, y, fillColor);
+                
+                // Add neighboring pixels
+                stack.push({x: x + 1, y});
+                stack.push({x: x - 1, y});
+                stack.push({x, y: y + 1});
+                stack.push({x, y: y - 1});
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+        }
+        
+        function getPixelColor(imageData, x, y) {
+            const index = (y * imageData.width + x) * 4;
+            return {
+                r: imageData.data[index],
+                g: imageData.data[index + 1],
+                b: imageData.data[index + 2],
+                a: imageData.data[index + 3]
+            };
+        }
+        
+        function setPixelColor(imageData, x, y, color) {
+            const index = (y * imageData.width + x) * 4;
+            imageData.data[index] = color.r;
+            imageData.data[index + 1] = color.g;
+            imageData.data[index + 2] = color.b;
+            imageData.data[index + 3] = 255; // Full opacity
+        }
+        
+        function colorsMatch(color1, color2) {
+            return color1.r === color2.r && 
+                   color1.g === color2.g && 
+                   color1.b === color2.b;
+        }
+        
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+        
+        // Shape drawing
+        let tempCanvas;
+        let tempCtx;
+        
+        function redrawCanvas() {
+            if (tempCanvas) {
+                ctx.drawImage(tempCanvas, 0, 0);
+                tempCanvas = null;
+                tempCtx = null;
+            }
+        }
+        
+        function drawShape(e) {
+            if (!isDrawing) return;
+            
+            // Create temporary canvas for preview
+            if (!tempCanvas) {
+                tempCanvas = document.createElement('canvas');
+                tempCanvas.width = canvas.width;
+                tempCanvas.height = canvas.height;
+                tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(canvas, 0, 0);
+            }
+            
+            // Clear temporary canvas and redraw original
+            tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+            tempCtx.drawImage(canvas, 0, 0);
+            
+            // Draw shape preview
+            tempCtx.strokeStyle = currentColor;
+            tempCtx.fillStyle = currentColor;
+            tempCtx.lineWidth = brushSize;
+            tempCtx.lineCap = 'round';
+            
+            const width = e.offsetX - startX;
+            const height = e.offsetY - startY;
+            
+            switch (currentTool) {
+                case 'line':
+                    tempCtx.beginPath();
+                    tempCtx.moveTo(startX, startY);
+                    tempCtx.lineTo(e.offsetX, e.offsetY);
+                    tempCtx.stroke();
+                    break;
+                case 'rectangle':
+                    tempCtx.strokeRect(startX, startY, width, height);
+                    break;
+                case 'circle':
+                    const radius = Math.sqrt(width * width + height * height);
+                    tempCtx.beginPath();
+                    tempCtx.arc(startX, startY, radius, 0, Math.PI * 2);
+                    tempCtx.stroke();
+                    break;
+            }
+            
+            // Draw temporary canvas to main canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(tempCanvas, 0, 0);
+        }
+        
+        // Brush preview
+        function updateBrushPreview() {
+            brushPreview.style.width = `${brushSize * 2}px`;
+            brushPreview.style.height = `${brushSize * 2}px`;
+            brushPreview.style.backgroundColor = currentTool === 'eraser' ? '#ffffff' : currentColor;
+            brushPreview.style.border = currentTool === 'eraser' ? '1px solid #000000' : 'none';
+        }
+        
+        function showBrushPreview(e) {
+            brushPreview.style.display = 'block';
+            brushPreview.style.left = `${e.pageX}px`;
+            brushPreview.style.top = `${e.pageY}px`;
+        }
+        
+        function hideBrushPreview() {
+            brushPreview.style.display = 'none';
+        }
+        
+        // Event listeners
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', (e) => {
+            if (currentTool === 'line' || currentTool === 'rectangle' || currentTool === 'circle') {
+                drawShape(e);
+            } else {
+                draw(e);
+            }
+            showBrushPreview(e);
+        });
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', () => {
+            isDrawing = false;
+            hideBrushPreview();
+        });
+        
+        // Initialize brush preview
+        updateBrushPreview();
+    </script>
+</body>
+</html>
