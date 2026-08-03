@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyberpunk Space Explorer</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden;
+            background: #000;
+        }
+        
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+        
+        .hud-element {
+            position: fixed;
+            z-index: 10;
+            pointer-events: none;
+        }
+        
+        .hud-element.pointer-events-auto {
+            pointer-events: auto;
+        }
+        
+        .glow-text {
+            text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor;
+        }
+        
+        .cyber-border {
+            position: relative;
+        }
+        
+        .cyber-border::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #00ffff, #ff00ff, #00ffff);
+            z-index: -1;
+            animation: borderGlow 2s linear infinite;
+        }
+        
+        @keyframes borderGlow {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        
+        .scanline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, transparent 50%, rgba(0, 255, 255, 0.02) 51%);
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .vignette {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at center, transparent 50%, black 100%);
+            pointer-events: none;
+            z-index: 99;
+        }
+        
+        .pulse {
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+        }
+        
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .blinking {
+            animation: blink 1s ease-in-out infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        .data-stream {
+            font-family: 'Orbitron', monospace;
+            font-size: 12px;
+            color: #00ffff;
+            opacity: 0.7;
+        }
+        
+        .panel {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+        }
+        
+        .button {
+            transition: all 0.3s ease;
+        }
+        
+        .button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px currentColor;
+        }
+        
+        .data-bar {
+            height: 4px;
+            background: linear-gradient(90deg, #00ffff, #ff00ff);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .data-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ffff, #ff00ff);
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+        
+        .radar {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            border: 2px solid #00ffff;
+            border-radius: 50%;
+            overflow: hidden;
+        }
+        
+        .radar::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #00ffff);
+            transform-origin: left;
+            animation: radarSweep 2s linear infinite;
+        }
+        
+        @keyframes radarSweep {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .radar-point {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #ff00ff;
+            border-radius: 50%;
+            animation: radarPulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes radarPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div class="scanline"></div>
+    <div class="vignette"></div>
+    
+    <!-- HUD Elements -->
+    <div class="hud-element top-4 left-4 panel cyber-border p-4 rounded-lg pointer-events-auto">
+        <h1 class="text-2xl font-bold text-cyan-400 glow-text mb-2">CYBERPUNK EXPLORER</h1>
+        <div class="flex items-center gap-4">
+            <div class="radar">
+                <div class="radar-point" style="top: 20%; left: 30%;"></div>
+                <div class="radar-point" style="top: 60%; left: 70%;"></div>
+                <div class="radar-point" style="top: 40%; left: 80%;"></div>
+            </div>
+            <div class="data-stream">
+                <div>SYSTEM: <span class="text-green-400">ONLINE</span></div>
+                <div>VELOCITY: <span id="velocity">0</span> km/s</div>
+                <div>DISTANCE: <span id="distance">0</span> LY</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="hud-element bottom-4 left-4 panel cyber-border p-4 rounded-lg">
+        <div class="mb-2">
+            <div class="text-sm text-gray-400">ENERGY</div>
+            <div class="data-bar">
+                <div class="data-bar-fill" id="energy-bar" style="width: 100%;"></div>
+            </div>
+        </div>
+        <div>
+            <div class="text-sm text-gray-400">SHIELD</div>
+            <div class="data-bar">
+                <div class="data-bar-fill" id="shield-bar" style="width: 100%;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="hud-element top-4 right-4 panel cyber-border p-4 rounded-lg pointer-events-auto">
+        <div class="text-sm text-gray-400 mb-2">CONTROLS</div>
+        <div class="data-stream text-xs">
+            <div>WASD / Arrows - Move</div>
+            <div>SPACE - Boost</div>
+            <div>SHIFT - Slow Motion</div>
+            <div>MOUSE - Look Around</div>
+        </div>
+    </div>
+    
+    <div class="hud-element bottom-4 right-4 panel cyber-border p-4 rounded-lg pointer-events-auto">
+        <div class="flex gap-4">
+            <button id="toggle-particles" class="button px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-black font-bold rounded">
+                Particles: ON
+            </button>
+            <button id="toggle-audio" class="button px-4 py-2 bg-purple-500 hover:bg-purple-400 text-black font-bold rounded">
+                Audio: ON
+            </button>
+        </div>
+    </div>
+    
+    <div class="hud-element top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-auto">
+        <div class="panel cyber-border p-8 rounded-lg floating">
+            <h2 class="text-4xl font-bold text-cyan-400 glow-text mb-4">READY TO LAUNCH</h2>
+            <p class="text-gray-400 mb-4">Press any key or click to begin your journey</p>
+            <button id="start-btn" class="button px-8 py-3 bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-400 hover:to-purple-400 text-white font-bold rounded-lg text-lg pulse">
+                START MISSION
+            </button>
+        </div>
+    </div>
+    
+    <div class="hud-element top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center hidden" id="stats-panel">
+        <div class="panel cyber-border p-6 rounded-lg">
+            <div class="text-6xl font-bold text-purple-400 glow-text mb-2" id="score">0</div>
+            <div class="text-gray-400">DISTANCE TRAVELED</div>
+        </div>
+    </div>
+
+    <script>
+        // Three.js Setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // Camera position
+        camera.position.z = 500;
+
+        // Stars
+        const starsGeometry = new THREE.BufferGeometry();
+        const starCount = 10000;
+        const starPositions = new Float32Array(starCount * 3);
+        const starColors = new Float32Array(starCount * 3);
+
+        for (let i = 0; i < starCount * 3; i += 3) {
+            starPositions[i] = (Math.random() - 0.5) * 10000;
+            starPositions[i + 1] = (Math.random() - 0.5) * 10000;
+            starPositions[i + 2] = (Math.random() - 0.5) * 10000 - 2000;
+            
+            const color = new THREE.Color();
+            color.setHSL(Math.random() * 0.2 + 0.5, 0.8, 0.8);
+            starColors[i] = color.r;
+            starColors[i + 1] = color.g;
+            starColors[i + 2] = color.b;
+        }
+
+        starsGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+        starsGeometry.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+
+        const starsMaterial = new THREE.PointsMaterial({
+            size: 2,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8
+        });
+
+        const stars = new THREE.Points(starsGeometry, starsMaterial);
+        scene.add(stars);
+
+        // Particle System
+        let particlesEnabled = true;
+        const particleCount = 5000;
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particlePositions = new Float32Array(particleCount * 3);
+        const particleVelocities = [];
+
+        for (let i = 0; i < particleCount * 3; i += 3) {
+            particlePositions[i] = (Math.random() - 0.5) * 8000;
+            particlePositions[i + 1] = (Math.random() - 0.5) * 8000;
+            particlePositions[i + 2] = (Math.random() - 0.5) * 8000;
+            particleVelocities.push({
+                x: (Math.random() - 0.5) * 0.5,
+                y: (Math.random() - 0.5) * 0.5,
+                z: (Math.random() - 0.5) * 0.5
+            });
+        }
+
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        const particlesMaterial = new THREE.PointsMaterial({
+            size: 1,
+            color: 0x00ffff,
+            transparent: true,
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending
+        });
+
+        const particles = new THREE.Points(particlesGeometry, particlesMaterial);
+        scene.add(particles);
+
+        // Spaceship
+        const spaceship = new THREE.Group();
+        
+        // Main body
+        const bodyGeometry = new THREE.ConeGeometry(5, 20, 8);
+        const bodyMaterial = new THREE.MeshPhongMaterial({
+            color: 0x00ffff,
+            emissive: 0x004444,
+            shininess: 100,
+            flatShading: true
+        });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.rotation.x = Math.PI;
+        spaceship.add(body);
+        
+        // Wings
+        const wingGeometry = new THREE.BoxGeometry(20, 1, 8);
+        const wingMaterial = new THREE.MeshPhongMaterial({
+            color: 0x0088ff,
+            emissive: 0x002244,
+            shininess: 80
+        });
+        const wings = new THREE.Mesh(wingGeometry, wingMaterial);
+        wings.position.z = 5;
+        spaceship.add(wings);
+        
+        // Engine glow
+        const engineGeometry = new THREE.SphereGeometry(3, 16, 16);
+        const engineMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff4400,
+            transparent: true,
+            opacity: 0.8
+        });
+        const engine = new THREE.Mesh(engineGeometry, engineMaterial);
+        engine.position.z = 10;
+        spaceship.add(engine);
+        
+        // Engine glow particles
+        const engineParticlesGeometry = new THREE.BufferGeometry();
+        const engineParticleCount = 100;
+        const engineParticlePositions = new Float32Array(engineParticleCount * 3);
+        
+        for (let i = 0; i < engineParticleCount * 3; i += 3) {
+            engineParticlePositions[i] = (Math.random() - 0.5) * 6;
+            engineParticlePositions[i + 1] = (Math.random() - 0.5) * 6;
+            engineParticlePositions[i + 2] = (Math.random() - 0.5) * 6 + 3;
+        }
+        
+        engineParticlesGeometry.setAttribute('position', new THREE.BufferAttribute(engineParticlePositions, 3));
+        const engineParticlesMaterial = new THREE.PointsMaterial({
+            color: 0xff4400,
+            size: 0.5,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+        
+        const engineParticles = new THREE.Points(engineParticlesGeometry, engineParticlesMaterial);
+        spaceship.add(engineParticles);
+        
+        scene.add(spaceship);
+
+        // Nebula
+        const nebulaGeometry = new THREE.BufferGeometry();
+        const nebulaCount = 1000;
+        const nebulaPositions = new Float32Array(nebulaCount * 3);
+        
+        for (let i = 0; i < nebulaCount * 3; i += 3) {
+            nebulaPositions[i] = (Math.random() - 0.5) * 5000;
+            nebulaPositions[i + 1] = (Math.random() - 0.5) * 5000;
+            nebulaPositions[i + 2] = (Math.random() - 0.5) * 5000 - 1000;
+        }
+        
+        nebulaGeometry.setAttribute('position', new THREE.BufferAttribute(nebulaPositions, 3));
+        const nebulaMaterial = new THREE.PointsMaterial({
+            color: 0xff00ff,
+            size: 10,
+            transparent: true,
+            opacity: 0.3,
+            blending: THREE.AdditiveBlending
+        });
+        
+        const nebula = new THREE.Points(nebulaGeometry, nebulaMaterial);
+        scene.add(nebula);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(0, 10, 5);
+        scene.add(directionalLight);
+        
+        const pointLight1 = new THREE.PointLight(0x00ffff, 1, 100);
+        pointLight1.position.set(100, 50, 0);
+        scene.add(pointLight1);
+        
+        const pointLight2 = new THREE.PointLight(0xff00ff, 1, 100);
+        pointLight2.position.set(-100, -50, 0);
+        scene.add(pointLight2);
+
+        // Game state
+        let gameStarted = false;
+        let speed = 0;
+        let maxSpeed = 10;
+        let acceleration = 0.1;
+        let velocity = 0;
+        let distance = 0;
+        let score = 0;
+        let energy = 100;
+        let shield = 100;
+        let mouseX = 0;
+        let mouseY = 0;
+        let targetX = 0;
+        let targetY = 0;
+        let isBoosting = false;
+        let isSlowMotion = false;
+        let audioEnabled = true;
+        let audioContext = null;
+        let oscillators = [];
+
+        // Audio system
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playTone(frequency, duration, type = 'sine') {
+            if (!audioEnabled || !audioContext) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = frequency;
+            oscillator.type = type;
+            
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration);
+            
+            oscillators.push(oscillator);
+        }
+
+        function updateAudio() {
+            if (!audioEnabled || !audioContext) return;
+            
+            const baseFreq = 50 + (speed / maxSpeed) * 200;
+            playTone(baseFreq, 0.1, 'sawtooth');
+            playTone(baseFreq * 2, 0.1, 'sine');
+        }
+
+        // Input handling
+        const keys = {};
+        
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            
+            if (!gameStarted && e.code !== 'Escape') {
+                startGame();
+            }
+            
+            if (e.code === 'Space') {
+                isBoosting = true;
+                playTone(400, 0.2);
+            }
+            
+            if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+                isSlowMotion = true;
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+            
+            if (e.code === 'Space') {
+                isBoosting = false;
+            }
+            
+            if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+                isSlowMotion = false;
+            }
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+            mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+        });
+
+        // UI Elements
+        const velocityEl = document.getElementById('velocity');
+        const distanceEl = document.getElementById('distance');
+        const energyBar = document.getElementById('energy-bar');
+        const shieldBar = document.getElementById('shield-bar');
+        const scoreEl = document.getElementById('score');
+        const startBtn = document.getElementById('start-btn');
+        const statsPanel = document.getElementById('stats-panel');
+        const toggleParticlesBtn = document.getElementById('toggle-particles');
+        const toggleAudioBtn = document.getElementById('toggle-audio');
+
+        function startGame() {
+            if (gameStarted) return;
+            gameStarted = true;
+            initAudio();
+            
+            startBtn.parentElement.classList.add('hidden');
+            statsPanel.classList.remove('hidden');
+            
+            playTone(600, 0.3);
+            setTimeout(() => playTone(800, 0.3), 100);
+            setTimeout(() => playTone(1000, 0.5), 200);
+        }
+
+        toggleParticlesBtn.addEventListener('click', () => {
+            particlesEnabled = !particlesEnabled;
+            particlesMaterial.opacity = particlesEnabled ? 0.6 : 0;
+            toggleParticlesBtn.textContent = `Particles: ${particlesEnabled ? 'ON' : 'OFF'}`;
+        });
+
+        toggleAudioBtn.addEventListener('click', () => {
+            audioEnabled = !audioEnabled;
+            toggleAudioBtn.textContent = `Audio: ${audioEnabled ? 'ON' : 'OFF'}`;
+        });
+
+        // Animation loop
+        let lastTime = performance.now();
+        let frameCount = 0;
+        let lastScoreUpdate = 0;
+
+        function animate(currentTime) {
+            requestAnimationFrame(animate);
+            
+            const deltaTime = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+            
+            if (gameStarted) {
+                // Speed calculation
+                const targetSpeed = isBoosting ? maxSpeed * 2 : maxSpeed;
+                const speedFactor = isSlowMotion ? 0.3 : 1;
+                
+                speed += (targetSpeed - speed) * 0.01;
+                velocity = speed * speedFactor;
+                
+                // Movement
+                targetX = mouseX * 200;
+                targetY = mouseY * 200;
+                
+                spaceship.position.x += (targetX - spaceship.position.x) * 0.05;
+                spaceship.position.y += (targetY - spaceship.position.y) * 0.05;
+                
+                spaceship.rotation.z = (spaceship.position.x - targetX) * 0.001;
+                spaceship.rotation.x = (spaceship.position.y - targetY) * 0.001;
+                
+                // Camera follow
+                camera.position.x += (spaceship.position.x - camera.position.x) * 0.05;
+                camera.position.y += (spaceship.position.y - camera.position.y) * 0.05;
+                
+                // Update particles
+                if (particlesEnabled) {
+                    const positions = particlesGeometry.attributes.position.array;
+                    for (let i = 0; i < particleCount * 3; i += 3) {
+                        positions[i] += velocity * 0.1;
+                        positions[i + 1] += velocity * 0.05;
+                        positions[i + 2] -= velocity * 0.1;
+                        
+                        if (positions[i] > 4000 || positions[i] < -4000) {
+                            positions[i] = (Math.random() - 0.5) * 8000;
+                        }
+                        if (positions[i + 1] > 4000 || positions[i + 1] < -4000) {
+                            positions[i + 1] = (Math.random() - 0.5) * 8000;
+                        }
+                        if (positions[i + 2] > 4000 || positions[i + 2] < -4000) {
+                            positions[i + 2] = (Math.random() - 0.5) * 8000;
+                        }
+                    }
+                    particlesGeometry.attributes.position.needsUpdate = true;
+                }
+                
+                // Update stars
+                const starPositions = starsGeometry.attributes.position.array;
+                for (let i = 0; i < starCount * 3; i += 3) {
+                    starPositions[i + 2] += velocity * 0.05;
+                    
+                    if (starPositions[i + 2] > 2000) {
+                        starPositions[i + 2] = -8000;
+                    }
+                }
+                starsGeometry.attributes.position.needsUpdate = true;
+                
+                // Update nebula
+                const nebulaPositions = nebulaGeometry.attributes.position.array;
+                for (let i = 0; i < nebulaCount * 3; i += 3) {
+                    nebulaPositions[i + 2] += velocity * 0.02;
+                    
+                    if (nebulaPositions[i + 2] > 2000) {
+                        nebulaPositions[i + 2] = -8000;
+                    }
+                }
+                nebulaGeometry.attributes.position.needsUpdate = true;
+                
+                // Engine particles
+                const enginePositions = engineParticlesGeometry.attributes.position.array;
+                for (let i = 0; i < engineParticleCount * 3; i += 3) {
+                    enginePositions[i] += (Math.random() - 0.5) * 2;
+                    enginePositions[i + 1] += (Math.random() - 0.5) * 2;
+                    enginePositions[i + 2] -= velocity * 0.5;
+                    
+                    if (enginePositions[i + 2] < -10) {
+                        enginePositions[i + 2] = 0;
+                        enginePositions[i] = (Math.random() - 0.5) * 6;
+                        enginePositions[i + 1] = (Math.random() - 0.5) * 6;
+                    }
+                }
+                engineParticlesGeometry.attributes.position.needsUpdate = true;
+                
+                // Update stats
+                distance += velocity * deltaTime * 0.01;
+                score += velocity * deltaTime;
+                
+                // Energy drain
+                if (isBoosting) {
+                    energy -= 0.5 * deltaTime;
+                } else {
+                    energy += 0.1 * deltaTime;
+                }
+                energy = Math.max(0, Math.min(100, energy));
+                
+                // Update UI
+                velocityEl.textContent = Math.floor(velocity * 1000);
+                distanceEl.textContent = distance.toFixed(2);
+                scoreEl.textContent = Math.floor(score);
+                energyBar.style.width = `${energy}%`;
+                shieldBar.style.width = `${shield}%`;
+                
+                // Color changes based on energy
+                energyBar.style.background = energy < 30 ? 'linear-gradient(90deg, #ff0000, #ff4400)' : 'linear-gradient(90deg, #00ffff, #ff00ff)';
+                
+                // Audio
+                if (frameCount % 10 === 0) {
+                    updateAudio();
+                }
+            }
+            
+            frameCount++;
+            renderer.render(scene, camera);
+        }
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start animation
+        animate(0);
+    </script>
+</body>
+</html>
