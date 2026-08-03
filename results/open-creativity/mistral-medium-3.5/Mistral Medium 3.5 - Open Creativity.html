@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyberpunk Terminal | Futuristic Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+        }
+
+        .glow {
+            text-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff, 0 0 20px #00ffff;
+        }
+
+        .glow-green {
+            text-shadow: 0 0 5px #00ff00, 0 0 10px #00ff00, 0 0 20px #00ff00;
+        }
+
+        .glow-purple {
+            text-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff, 0 0 20px #ff00ff;
+        }
+
+        .glow-pink {
+            text-shadow: 0 0 5px #ff00aa, 0 0 10px #ff00aa, 0 0 20px #ff00aa;
+        }
+
+        .glass {
+            background: rgba(10, 10, 30, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+        }
+
+        .glass-dark {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .terminal-input:focus {
+            outline: none;
+            border-color: rgba(0, 255, 255, 0.8);
+        }
+
+        canvas {
+            display: block;
+        }
+
+        .cube-container {
+            perspective: 1000px;
+            width: 100%;
+            height: 100%;
+        }
+
+        .cube {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+        }
+
+        .cube-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 12px;
+            color: white;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+        }
+
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.3), transparent);
+            animation: scan 4s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        .pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes pulse-glow {
+            from { 
+                text-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff, 0 0 20px #00ffff;
+            }
+            to { 
+                text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff, 0 0 40px #00ffff;
+            }
+        }
+
+        .matrix-char {
+            color: #00ff00;
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .progress-bar {
+            transition: width 0.5s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-black text-cyan-400 min-h-screen">
+    <!-- Particle Canvas -->
+    <canvas id="particleCanvas"></canvas>
+    <div class="scan-line"></div>
+
+    <!-- Main Content -->
+    <div class="fixed inset-0 p-4 md:p-6 flex flex-col">
+        <!-- Header with Clock -->
+        <div class="flex justify-between items-center mb-4 md:mb-6 z-10">
+            <div class="text-xl md:text-2xl font-bold glow pulse-glow flex items-center gap-3">
+                <span>&#9632;</span>
+                <span>CYBERPUNK TERMINAL</span>
+                <span>&#9632;</span>
+            </div>
+            <div id="clock" class="text-lg md:text-xl glow-green"></div>
+        </div>
+
+        <!-- Main Panel -->
+        <div class="flex-1 flex flex-col md:flex-row gap-4 md:gap-6 z-10">
+            <!-- Left Panel - System Stats -->
+            <div class="glass rounded-lg p-4 w-full md:w-1/4 space-y-4">
+                <h2 class="text-base md:text-lg glow-purple border-b border-purple-500 pb-2 flex items-center gap-2">
+                    <span>&#9881;</span>
+                    <span>SYSTEM STATUS</span>
+                </h2>
+                <div class="space-y-3">
+                    <div class="fade-in">
+                        <div class="flex justify-between text-sm mb-1">
+                            <span>CPU USAGE:</span>
+                            <span id="cpuUsage" class="glow">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div id="cpuBar" class="bg-cyan-500 h-2 rounded-full progress-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="fade-in">
+                        <div class="flex justify-between text-sm mb-1">
+                            <span>MEMORY:</span>
+                            <span id="memoryUsage" class="glow-green">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div id="memoryBar" class="bg-green-500 h-2 rounded-full progress-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="fade-in">
+                        <div class="flex justify-between text-sm mb-1">
+                            <span>NETWORK:</span>
+                            <span id="networkUsage" class="glow-purple">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div id="networkBar" class="bg-purple-500 h-2 rounded-full progress-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="fade-in">
+                        <div class="flex justify-between text-sm mb-1">
+                            <span>DISK:</span>
+                            <span id="diskUsage" class="glow-pink">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div id="diskBar" class="bg-pink-500 h-2 rounded-full progress-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center - Welcome Message -->
+            <div class="glass rounded-lg p-4 flex-1 flex flex-col justify-center items-center text-center">
+                <h1 id="welcomeText" class="text-2xl md:text-4xl font-bold glow pulse-glow mb-4"></h1>
+                <div class="text-base md:text-lg opacity-80 mb-6">
+                    <p>Type <span class="glow text-cyan-400">help</span> for available commands</p>
+                </div>
+                <div class="relative w-24 h-24 md:w-32 md:h-32 mb-6">
+                    <div class="absolute inset-0 border-2 border-cyan-500 rounded-full animate-pulse"></div>
+                    <div class="absolute inset-2 border-2 border-cyan-500 rounded-full animate-pulse delay-500"></div>
+                    <div class="absolute inset-4 border-2 border-cyan-500 rounded-full animate-pulse delay-1000"></div>
+                    <div class="absolute inset-1/2 w-4 h-4 bg-cyan-400 rounded-full animate-bounce"></div>
+                </div>
+                <div class="text-xs md:text-sm opacity-60">
+                    <p>Neural Link: <span class="glow-green">ONLINE</span> | Security: <span class="glow-purple">LEVEL 5</span></p>
+                </div>
+            </div>
+
+            <!-- Right Panel - 3D Cube & Info -->
+            <div class="glass rounded-lg p-4 w-full md:w-1/4 space-y-4">
+                <h2 class="text-base md:text-lg glow-purple border-b border-purple-500 pb-2 flex items-center gap-2">
+                    <span>&#9633;</span>
+                    <span>3D VISUALIZATION</span>
+                </h2>
+                <div class="w-full h-32 md:h-40 relative">
+                    <div class="cube-container w-full h-full">
+                        <div class="cube w-full h-full relative transform-style-preserve-3d">
+                            <div class="cube-face absolute w-full h-full bg-cyan-500 opacity-80">CYBER</div>
+                            <div class="cube-face absolute w-full h-full bg-purple-500 opacity-80">PUNK</div>
+                            <div class="cube-face absolute w-full h-full bg-green-500 opacity-80">2077</div>
+                            <div class="cube-face absolute w-full h-full bg-pink-500 opacity-80">NET</div>
+                            <div class="cube-face absolute w-full h-full bg-blue-500 opacity-80">RUN</div>
+                            <div class="cube-face absolute w-full h-full bg-yellow-500 opacity-80">TERM</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-xs opacity-80">
+                    <p>3D Cube Rotation</p>
+                    <p class="glow-green">Active</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Terminal -->
+        <div class="glass-dark rounded-lg p-4 mt-4 flex-1 min-h-[150px] md:min-h-[200px] z-10">
+            <div id="terminalOutput" class="h-full overflow-y-auto mb-4 font-mono text-xs md:text-sm whitespace-pre-wrap"></div>
+            <div class="flex items-center">
+                <span class="glow mr-2 text-cyan-400">&#9654;</span>
+                <input
+                    id="terminalInput"
+                    type="text"
+                    class="terminal-input bg-transparent border-none text-cyan-400 flex-1 focus:ring-0 text-xs md:text-sm"
+                    autocomplete="off"
+                    spellcheck="false"
+                    placeholder="Enter command..."
+                >
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Matrix Canvas -->
+    <canvas id="matrixCanvas" class="hidden"></canvas>
+
+    <script>
+        // ==================== PARTICLE NETWORK ====================
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        const particles = [];
+        const particleCount = Math.floor(window.innerWidth * window.innerHeight / 10000);
+        const maxDistance = 150;
+        let connectionsEnabled = true;
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 0.3;
+                this.vy = (Math.random() - 0.5) * 0.3;
+                this.size = Math.random() * 1.5 + 0.5;
+                this.color = `hsl(${Math.random() * 120 + 180}, 100%, 60%)`;
+                this.originalColor = this.color;
+            }
+
+            update(mouseX, mouseY) {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Bounce off edges
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+
+                // Mouse interaction
+                if (mouseX && mouseY) {
+                    const dx = mouseX - this.x;
+                    const dy = mouseY - this.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < 100) {
+                        const force = 100 / distance;
+                        this.vx += dx / distance * force * 0.01;
+                        this.vy += dy / distance * force * 0.01;
+                        
+                        // Change color when near mouse
+                        const intensity = Math.min(1, 100 / distance);
+                        this.color = `hsl(${180 + intensity * 60}, 100%, ${60 + intensity * 20}%)`;
+                    } else {
+                        this.color = this.originalColor;
+                    }
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < particleCount; i++) {
+            particles.push(new Particle());
+        }
+
+        let mouseX = null;
+        let mouseY = null;
+
+        function drawParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            particles.forEach(p => {
+                p.update(mouseX, mouseY);
+                p.draw();
+            });
+
+            if (connectionsEnabled) {
+                for (let i = 0; i < particles.length; i++) {
+                    for (let j = i + 1; j < particles.length; j++) {
+                        const p1 = particles[i];
+                        const p2 = particles[j];
+                        const dx = p1.x - p2.x;
+                        const dy = p1.y - p2.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+
+                        if (distance < maxDistance) {
+                            const opacity = 1 - (distance / maxDistance);
+                            ctx.strokeStyle = `rgba(0, 255, 255, ${opacity * 0.2})`;
+                            ctx.lineWidth = opacity * 0.5;
+                            ctx.beginPath();
+                            ctx.moveTo(p1.x, p1.y);
+                            ctx.lineTo(p2.x, p2.y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+            }
+
+            requestAnimationFrame(drawParticles);
+        }
+
+        drawParticles();
+
+        canvas.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            mouseX = null;
+            mouseY = null;
+        });
+
+        // ==================== CLOCK ====================
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const date = now.toLocaleDateString('en-US', { 
+                weekday: 'short', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+
+            document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds} | ${date}`;
+        }
+
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // ==================== TYPING ANIMATION ====================
+        const welcomeMessages = [
+            "WELCOME TO THE FUTURE",
+            "ACCESS GRANTED",
+            "SYSTEM ONLINE",
+            "NEURAL LINK ESTABLISHED",
+            "MATRIX INITIALIZED",
+            "CYBERPUNK TERMINAL v2.0"
+        ];
+        let currentMessage = 0;
+
+        function typeWelcomeMessage() {
+            const element = document.getElementById('welcomeText');
+            const message = welcomeMessages[currentMessage];
+            let i = 0;
+
+            element.textContent = '';
+
+            const typeInterval = setInterval(() => {
+                if (i < message.length) {
+                    element.textContent += message.charAt(i);
+                    i++;
+                } else {
+                    clearInterval(typeInterval);
+                    setTimeout(() => {
+                        currentMessage = (currentMessage + 1) % welcomeMessages.length;
+                        typeWelcomeMessage();
+                    }, 2500);
+                }
+            }, 80);
+        }
+
+        typeWelcomeMessage();
+
+        // ==================== SYSTEM STATS ====================
+        function updateSystemStats() {
+            const cpu = Math.floor(Math.sin(Date.now() / 1000) * 40 + 60);
+            const memory = Math.floor(Math.sin(Date.now() / 1500) * 30 + 50);
+            const network = Math.floor(Math.sin(Date.now() / 2000) * 25 + 30);
+            const disk = Math.floor(Math.sin(Date.now() / 2500) * 20 + 40);
+
+            document.getElementById('cpuUsage').textContent = `${cpu}%`;
+            document.getElementById('cpuBar').style.width = `${cpu}%`;
+
+            document.getElementById('memoryUsage').textContent = `${memory}%`;
+            document.getElementById('memoryBar').style.width = `${memory}%`;
+
+            document.getElementById('networkUsage').textContent = `${network}%`;
+            document.getElementById('networkBar').style.width = `${network}%`;
+
+            document.getElementById('diskUsage').textContent = `${disk}%`;
+            document.getElementById('diskBar').style.width = `${disk}%`;
+        }
+
+        setInterval(updateSystemStats, 200);
+        updateSystemStats();
+
+        // ==================== 3D CUBE ====================
+        const cube = document.querySelector('.cube');
+        let angleX = 0;
+        let angleY = 0;
+        let cubeRotating = true;
+
+        // Position cube faces
+        const faces = document.querySelectorAll('.cube-face');
+        const facePositions = [
+            'rotateY(0deg) translateZ(25px)',   // front
+            'rotateY(90deg) translateZ(25px)',  // right
+            'rotateY(-90deg) translateZ(25px)', // left
+            'rotateY(180deg) translateZ(25px)', // back
+            'rotateX(90deg) translateZ(25px)',  // top
+            'rotateX(-90deg) translateZ(25px)'  // bottom
+        ];
+
+        faces.forEach((face, index) => {
+            face.style.transform = facePositions[index];
+        });
+
+        function animateCube() {
+            if (cubeRotating) {
+                angleX += 0.3;
+                angleY += 0.5;
+            }
+            
+            cube.style.transform = `rotateX(${angleX}deg) rotateY(${angleY}deg)`;
+            requestAnimationFrame(animateCube);
+        }
+
+        animateCube();
+
+        // ==================== TERMINAL ====================
+        const terminalOutput = document.getElementById('terminalOutput');
+        const terminalInput = document.getElementById('terminalInput');
+        const matrixCanvas = document.getElementById('matrixCanvas');
+        let matrixActive = false;
+        let matrixAnimationId = null;
+
+        function printToTerminal(text, className = '') {
+            const line = document.createElement('div');
+            line.textContent = text;
+            if (className) line.className = className;
+            terminalOutput.appendChild(line);
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        }
+
+        const commands = {
+            help: () => {
+                printToTerminal('Available commands:', 'glow');
+                printToTerminal('');
+                printToTerminal('  help          - Show this help message');
+                printToTerminal('  clear         - Clear the terminal');
+                printToTerminal('  time          - Show current time');
+                printToTerminal('  date          - Show current date');
+                printToTerminal('  matrix        - Toggle matrix rain effect');
+                printToTerminal('  particles     - Toggle particle connections');
+                printToTerminal('  cube          - Toggle 3D cube rotation');
+                printToTerminal('  stats         - Show detailed system statistics');
+                printToTerminal('  secret        - Reveal hidden message');
+                printToTerminal('  ls            - List available commands');
+                printToTerminal('  banner        - Show ASCII art banner');
+                printToTerminal('  info          - Show system information');
+                printToTerminal('');
+            },
+            clear: () => {
+                terminalOutput.textContent = '';
+            },
+            time: () => {
+                const now = new Date();
+                printToTerminal(`Current time: ${now.toLocaleTimeString()}`, 'glow-green');
+            },
+            date: () => {
+                const now = new Date();
+                printToTerminal(`Current date: ${now.toLocaleDateString()}`, 'glow-green');
+            },
+            matrix: () => {
+                matrixActive = !matrixActive;
+                
+                if (matrixActive) {
+                    // Start matrix effect
+                    matrixCanvas.classList.remove('hidden');
+                    matrixCanvas.width = window.innerWidth;
+                    matrixCanvas.height = window.innerHeight;
+                    
+                    const matrixCtx = matrixCanvas.getContext('2d');
+                    const chars = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                    const fontSize = 14;
+                    const columns = Math.floor(matrixCanvas.width / fontSize);
+                    const drops = Array(columns).fill(1);
+
+                    function drawMatrix() {
+                        matrixCtx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+                        matrixCtx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+
+                        matrixCtx.fillStyle = '#00ff00';
+                        matrixCtx.font = `${fontSize}px monospace`;
+
+                        for (let i = 0; i < drops.length; i++) {
+                            const char = chars[Math.floor(Math.random() * chars.length)];
+                            const x = i * fontSize;
+                            const y = drops[i] * fontSize;
+
+                            matrixCtx.fillText(char, x, y);
+
+                            if (y > matrixCanvas.height && Math.random() > 0.975) {
+                                drops[i] = 0;
+                            }
+                            drops[i]++;
+                        }
+
+                        matrixAnimationId = requestAnimationFrame(drawMatrix);
+                    }
+
+                    drawMatrix();
+                    printToTerminal('Matrix rain activated. Type "matrix" again to disable.', 'glow-green');
+                } else {
+                    // Stop matrix effect
+                    if (matrixAnimationId) {
+                        cancelAnimationFrame(matrixAnimationId);
+                        matrixAnimationId = null;
+                    }
+                    matrixCanvas.classList.add('hidden');
+                    printToTerminal('Matrix rain deactivated.', 'glow-green');
+                }
+            },
+            particles: () => {
+                connectionsEnabled = !connectionsEnabled;
+                printToTerminal(`Particle connections: ${connectionsEnabled ? 'ENABLED' : 'DISABLED'}`, 'glow');
+            },
+            cube: () => {
+                cubeRotating = !cubeRotating;
+                printToTerminal(`3D cube rotation: ${cubeRotating ? 'ENABLED' : 'DISABLED'}`, 'glow-purple');
+            },
+            stats: () => {
+                const now = new Date();
+                const yearStart = new Date(now.getFullYear(), 0, 1);
+                const uptimeDays = Math.floor((now - yearStart) / (1000 * 60 * 60 * 24));
+                
+                printToTerminal('=== SYSTEM STATISTICS ===', 'glow');
+                printToTerminal('');
+                printToTerminal(`Uptime: ${uptimeDays} days`);
+                printToTerminal(`CPU: ${Math.floor(Math.random() * 60 + 20)}% (${Math.floor(Math.random() * 8 + 1)} cores)`);
+                printToTerminal(`Memory: ${Math.floor(Math.random() * 80 + 10)}% (16GB total)`);
+                printToTerminal(`Network: ${Math.floor(Math.random() * 50 + 5)}% (1Gbps)`);
+                printToTerminal(`Disk: ${Math.floor(Math.random() * 70 + 20)}% (512GB SSD)`);
+                printToTerminal(`Temperature: ${Math.floor(Math.random() * 20 + 20)}°C`);
+                printToTerminal(`Processes: ${Math.floor(Math.random() * 100 + 50)} running`);
+                printToTerminal('');
+            },
+            secret: () => {
+                printToTerminal('');
+                printToTerminal('  ███╗   ██╗███████╗ ██████╗ ███╗   ██╗    ███╗   ██╗ ██████╗  ██████╗ ██████╗ ██╗     ███████╗███████╗', 'glow-green');
+                printToTerminal('  ████╗  ██║██╔════╝██╔═══██╗████╗  ██║    ████╗  ██║██╔═══██╗██╔═══██╗██╔══██╗██║     ██╔════╝██╔════╝', 'glow-green');
+                printToTerminal('  ██╔██╗ ██║█████╗  ██║   ██║██╔██╗ ██║    ██╔██╗ ██║██║   ██║██║   ██║██║  ██║██║     █████╗  ███████╗', 'glow-green');
+                printToTerminal('  ██║╚██╗██║██╔══╝  ██║   ██║██║╚██╗██║    ██║╚██╗██║██║   ██║██║   ██║██║  ██║██║     ██╔══╝  ╚════██║', 'glow-green');
+                printToTerminal('  ██║ ╚████║███████╗╚██████╔╝██║ ╚████║    ██║ ╚████║╚██████╔╝╚██████╔╝██████╔╝███████╗███████╗██║     ███████╗', 'glow-green');
+                printToTerminal('  ╚═╝  ╚═══╝╚══════╝ ╚═════╝ ╚═╝  ╚═══╝    ╚═╝  ╚═══╝ ╚═════╝  ╚═════╝ ╚═════╝ ╚══════╝╚══════╝╚══════╝╚═╝     ╚══════╝', 'glow-green');
+                printToTerminal('');
+                printToTerminal('The secret is: Keep exploring!', 'glow-purple');
+            },
+            ls: () => {
+                printToTerminal('Commands: ' + Object.keys(commands).join('  '), 'glow');
+            },
+            banner: () => {
+                printToTerminal('');
+                printToTerminal('  ██████╗██╗   ██╗███╗   ██╗██████╗ ██╗   ██╗███╗   ██╗ ██████╗███████╗', 'glow');
+                printToTerminal('  ██╔══██╗██║   ██║████╗  ██║██╔══██╗██║   ██║████╗  ██║██╔════╝██╔════╝', 'glow');
+                printToTerminal('  ██████╔╝██║   ██║██╔██╗ ██║██║  ██║██║   ██║██╔██╗ ██║██║  ███╗█████╗', 'glow');
+                printToTerminal('  ██╔═══╝ ██║   ██║██║╚██╗██║██║  ██║╚██╗ ██╔╝██║╚██╗██║██║   ██║██╔══╝', 'glow');
+                printToTerminal('  ██║     ╚██████╔╝██║ ╚████║██████╔╝ ╚████╔╝ ██║ ╚████║╚██████╔╝██║  ██║███████╗', 'glow');
+                printToTerminal('  ╚═╝      ╚═════╝ ╚═╝  ╚═══╝╚═════╝   ╚═══╝  ╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝', 'glow');
+                printToTerminal('');
+                printToTerminal('        CYBERPUNK TERMINAL v2.0', 'glow-purple');
+                printToTerminal('');
+            },
+            info: () => {
+                printToTerminal('=== SYSTEM INFORMATION ===', 'glow');
+                printToTerminal('');
+                printToTerminal('Terminal Version: 2.0.0');
+                printToTerminal('Build Date: 2077-11-15');
+                printToTerminal('Developer: Neo');
+                printToTerminal('Platform: Web 5.0');
+                printToTerminal('Security: Level 5 Clearance');
+                printToTerminal('');
+                printToTerminal('Features:', 'glow-green');
+                printToTerminal('  - Interactive Particle Network');
+                printToTerminal('  - Real-time System Monitoring');
+                printToTerminal('  - 3D Visualization Engine');
+                printToTerminal('  - Matrix Rain Effect');
+                printToTerminal('  - Advanced Command Interface');
+                printToTerminal('');
+            }
+        };
+
+        terminalInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const command = terminalInput.value.trim();
+                terminalInput.value = '';
+
+                if (command) {
+                    printToTerminal(`> ${command}`, 'text-cyan-400');
+
+                    if (commands[command.toLowerCase()]) {
+                        commands[command.toLowerCase()]();
+                    } else {
+                        printToTerminal(`Command not found: ${command}`, 'text-red-500');
+                        printToTerminal('Type "help" for available commands.', 'text-yellow-500');
+                    }
+                }
+
+                terminalOutput.scrollTop = terminalOutput.scrollHeight;
+            }
+        });
+
+        // Focus terminal on load
+        terminalInput.focus();
+
+        // Add initial terminal message
+        setTimeout(() => {
+            printToTerminal('CYBERPUNK TERMINAL v2.0', 'glow');
+            printToTerminal('Type "help" for available commands.', 'glow-green');
+            printToTerminal('');
+        }, 500);
+
+        // Handle window resize for matrix canvas
+        window.addEventListener('resize', () => {
+            if (!matrixCanvas.classList.contains('hidden')) {
+                matrixCanvas.width = window.innerWidth;
+                matrixCanvas.height = window.innerHeight;
+            }
+        });
+
+        // Easter egg: Konami code
+        const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+        let konamiIndex = 0;
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === konamiCode[konamiIndex]) {
+                konamiIndex++;
+                if (konamiIndex === konamiCode.length) {
+                    printToTerminal('');
+                    printToTerminal('  ███████╗██╗  ██╗ ██████╗ ███╗   ██╗███████╗', 'glow-pink');
+                    printToTerminal('  ██╔════╝██║  ██║██╔═══██╗████╗  ██║██╔════╝', 'glow-pink');
+                    printToTerminal('  ███████╗███████║██║   ██║██╔██╗ ██║█████╗', 'glow-pink');
+                    printToTerminal('  ╚════██║██╔══██║██║   ██║██║╚██╗██║██╔══╝', 'glow-pink');
+                    printToTerminal('  ███████║██║  ██║╚██████╔╝██║ ╚████║███████╗', 'glow-pink');
+                    printToTerminal('  ╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝╚══════╝', 'glow-pink');
+                    printToTerminal('');
+                    printToTerminal('CheAT CODE ACTIVATED! All systems unlocked.', 'glow-pink');
+                    konamiIndex = 0;
+                }
+            } else {
+                konamiIndex = 0;
+            }
+        });
+
+        // Add random system messages
+        const systemMessages = [
+            'System nominal.',
+            'All systems operational.',
+            'Neural link stable.',
+            'Security protocols active.',
+            'Matrix connection established.',
+            'Quantum encryption enabled.',
+            'Firewall status: ONLINE',
+            'AI core temperature: NORMAL'
+        ];
+
+        setInterval(() => {
+            if (Math.random() > 0.7) {
+                const msg = systemMessages[Math.floor(Math.random() * systemMessages.length)];
+                printToTerminal(`[SYSTEM] ${msg}`, 'text-gray-400');
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
