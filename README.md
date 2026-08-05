@@ -21,7 +21,6 @@ Generated HTML files live in `results/`, organized by prompt. Each prompt has it
 
 - `prompts/` is the source of truth — these are the exact prompts submitted to arena.ai.
 - **Never edit HTML files in `results/`** — any manual modification, even a minor improvement, compromises the validity of the comparison. If a result is broken, regenerate it from the prompt.
-- `CLAUDE.md` and `.gitignore` are not committed to the repo.
 
 ## License
 
