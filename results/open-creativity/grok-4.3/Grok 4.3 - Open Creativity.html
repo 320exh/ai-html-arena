@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AETHER • Universe Simulator</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+        
+        :root {
+            --accent: #6366f1;
+        }
+        
+        body {
+            font-family: 'Inter', system_ui, sans-serif;
+        }
+        
+        .font-display {
+            font-family: 'Space Grotesk', 'Inter', sans-serif;
+            font-weight: 600;
+        }
+
+        #canvas {
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.4),
+                        0 0 0 1px rgba(255,255,255,0.08) inset;
+            background: #0a0a0f;
+            touch-action: none;
+        }
+
+        .particle {
+            transition: all 0.1s ease;
+        }
+
+        .control-panel {
+            background: rgba(255,255,255,0.03);
+            backdrop-filter: blur(20px);
+        }
+
+        .stat-value {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .cosmic-bg {
+            background: radial-gradient(circle at center, #1a1a2e 0%, #0a0a0f 70%);
+        }
+
+        .nebula {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: 0.15;
+            pointer-events: none;
+        }
+
+        .mode-btn {
+            transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        
+        .mode-btn.active {
+            background-color: #6366f1;
+            color: white;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
+        }
+
+        .slider {
+            accent-color: #6366f1;
+        }
+
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 1.5s infinite alternate;
+        }
+    </style>
+</head>
+<body class="bg-zinc-950 text-white overflow-hidden">
+    <!-- Header -->
+    <div class="border-b border-white/10 bg-zinc-950/80 backdrop-blur-lg sticky top-0 z-50">
+        <div class="max-w-screen-2xl mx-auto px-8 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-x-3">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+                    <i class="fa-solid fa-infinity text-white text-3xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-display text-3xl tracking-tighter">AETHER</h1>
+                    <p class="text-[10px] text-white/40 -mt-1">UNIVERSE SIMULATOR</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-x-2">
+                <div class="px-3 py-1.5 bg-white/5 rounded-3xl text-xs flex items-center gap-x-2">
+                    <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                    <span class="text-emerald-300 text-xs font-medium">42,891 PARTICLES</span>
+                </div>
+                
+                <button onclick="resetUniverse()" 
+                        class="px-4 py-2 flex items-center gap-x-2 text-sm bg-white/5 hover:bg-white/10 transition-colors rounded-3xl">
+                    <i class="fa-solid fa-redo text-xs"></i>
+                    <span class="font-medium">Reset</span>
+                </button>
+                
+                <button onclick="downloadImage()" 
+                        class="px-4 py-2 flex items-center gap-x-2 text-sm bg-white hover:bg-white/90 transition-colors text-black rounded-3xl font-semibold">
+                    <i class="fa-solid fa-download text-xs"></i>
+                    <span>Export</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-screen-2xl mx-auto px-8 pt-6 pb-4 flex gap-8 h-[calc(100vh-73px)]">
+        
+        <!-- Canvas Container -->
+        <div class="flex-1 relative flex items-center justify-center">
+            <div class="relative">
+                <!-- Background effects -->
+                <div class="absolute -inset-4 bg-gradient-to-br from-indigo-950/30 to-transparent rounded-[3rem]"></div>
+                
+                <canvas id="canvas" width="900" height="700" 
+                        class="cursor-crosshair border border-white/10 shadow-2xl"></canvas>
+                
+                <!-- Overlay info -->
+                <div class="absolute top-6 left-6 bg-black/60 backdrop-blur-md px-4 py-2 rounded-3xl text-xs flex items-center gap-x-2 border border-white/10">
+                    <i class="fa-solid fa-mouse-pointer text-indigo-400"></i>
+                    <span class="font-medium text-white/70">Drag to attract • Click to repel</span>
+                </div>
+                
+                <div id="stats" class="absolute bottom-6 right-6 bg-black/60 backdrop-blur-md px-4 py-2.5 rounded-3xl text-xs border border-white/10 flex gap-x-5">
+                    <div><span class="font-mono text-white/40">FPS</span> <span id="fps" class="font-semibold text-emerald-400">60</span></div>
+                    <div><span class="font-mono text-white/40">PARTICLES</span> <span id="particle-count" class="font-semibold">12480</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="w-80 flex-shrink-0">
+            <div class="control-panel border border-white/10 rounded-3xl p-6 h-full flex flex-col">
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="font-semibold tracking-tight">Simulation</span>
+                    </div>
+                    <div class="text-xs text-white/50">Real-time cosmic physics</div>
+                </div>
+                
+                <!-- Modes -->
+                <div class="mb-6">
+                    <div class="text-xs uppercase tracking-widest text-white/40 mb-2 px-1">INTERACTION MODE</div>
+                    <div class="grid grid-cols-3 gap-1.5">
+                        <button onclick="setMode('attract')" id="mode-attract"
+                                class="mode-btn active flex flex-col items-center justify-center py-3 bg-white/5 hover:bg-white/10 rounded-2xl text-xs font-medium">
+                            <i class="fa-solid fa-magnet mb-1 text-lg text-indigo-400"></i>
+                            <span>Attract</span>
+                        </button>
+                        <button onclick="setMode('repel')" id="mode-repel"
+                                class="mode-btn flex flex-col items-center justify-center py-3 bg-white/5 hover:bg-white/10 rounded-2xl text-xs font-medium">
+                            <i class="fa-solid fa-compress-arrows-alt mb-1 text-lg text-rose-400"></i>
+                            <span>Repel</span>
+                        </button>
+                        <button onclick="setMode('orbit')" id="mode-orbit"
+                                class="mode-btn flex flex-col items-center justify-center py-3 bg-white/5 hover:bg-white/10 rounded-2xl text-xs font-medium">
+                            <i class="fa-solid fa-sync mb-1 text-lg text-amber-400"></i>
+                            <span>Orbit</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Controls -->
+                <div class="space-y-5 flex-1">
+                    <div>
+                        <div class="flex justify-between text-xs mb-1.5 px-0.5">
+                            <span class="text-white/60">Particle Count</span>
+                            <span id="count-value" class="font-mono text-indigo-300">12,480</span>
+                        </div>
+                        <input type="range" id="count-slider" min="500" max="25000" step="500" value="12480" 
+                               class="slider w-full accent-indigo-500" oninput="updateParticleCount()">
+                    </div>
+                    
+                    <div>
+                        <div class="flex justify-between text-xs mb-1.5 px-0.5">
+                            <span class="text-white/60">Velocity</span>
+                            <span id="velocity-value" class="font-mono text-indigo-300">1.0</span>
+                        </div>
+                        <input type="range" id="velocity-slider" min="0.2" max="3.5" step="0.1" value="1.0" 
+                               class="slider w-full accent-indigo-500" oninput="updateParams()">
+                    </div>
+                    
+                    <div>
+                        <div class="flex justify-between text-xs mb-1.5 px-0.5">
+                            <span class="text-white/60">Attraction Force</span>
+                            <span id="force-value" class="font-mono text-indigo-300">1.8</span>
+                        </div>
+                        <input type="range" id="force-slider" min="0.1" max="4" step="0.1" value="1.8" 
+                               class="slider w-full accent-indigo-500" oninput="updateParams()">
+                    </div>
+                    
+                    <div>
+                        <div class="flex justify-between text-xs mb-1.5 px-0.5">
+                            <span class="text-white/60">Connection Distance</span>
+                            <span id="connect-value" class="font-mono text-indigo-300">80</span>
+                        </div>
+                        <input type="range" id="connect-slider" min="20" max="180" step="5" value="80" 
+                               class="slider w-full accent-indigo-500" oninput="updateParams()">
+                    </div>
+                </div>
+                
+                <!-- Presets -->
+                <div class="mt-auto pt-6 border-t border-white/10">
+                    <div class="text-xs uppercase tracking-widest text-white/40 mb-2 px-1">PRESETS</div>
+                    <div class="grid grid-cols-2 gap-1.5">
+                        <button onclick="loadPreset('bigbang')" class="text-xs py-2 px-3 bg-white/5 hover:bg-white/10 transition-all rounded-2xl text-left text-white/70">Big Bang</button>
+                        <button onclick="loadPreset('blackhole')" class="text-xs py-2 px-3 bg-white/5 hover:bg-white/10 transition-all rounded-2xl text-left text-white/70">Black Hole</button>
+                        <button onclick="loadPreset('galaxy')" class="text-xs py-2 px-3 bg-white/5 hover:bg-white/10 transition-all rounded-2xl text-left text-white/70">Spiral Galaxy</button>
+                        <button onclick="loadPreset('supernova')" class="text-xs py-2 px-3 bg-white/5 hover:bg-white/10 transition-all rounded-2xl text-left text-white/70">Supernova</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Tailwind script
+        function initializeTailwind() {
+            document.documentElement.style.setProperty('--accent', '#6366f1');
+        }
+        
+        // Particle System
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { alpha: true });
+        
+        let particles = [];
+        let mouse = { x: null, y: null, down: false };
+        let mode = 'attract';
+        let params = {
+            count: 12480,
+            velocity: 1.0,
+            force: 1.8,
+            connectDist: 80
+        };
+        
+        let lastTime = performance.now();
+        let frameCount = 0;
+        let fps = 60;
+        
+        class Particle {
+            constructor(x, y) {
+                this.x = x || Math.random() * canvas.width;
+                this.y = y || Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.size = Math.random() * 2.2 + 0.8;
+                this.hue = Math.random() * 60 + 220;
+                this.alpha = Math.random() * 0.6 + 0.4;
+            }
+            
+            update() {
+                // Apply mouse interaction
+                if (mouse.x !== null && mouse.y !== null) {
+                    const dx = mouse.x - this.x;
+                    const dy = mouse.y - this.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                    
+                    const force = params.force * 0.9;
+                    
+                    if (mode === 'attract') {
+                        this.vx += (dx / dist) * force * 0.025;
+                        this.vy += (dy / dist) * force * 0.025;
+                    } else if (mode === 'repel') {
+                        this.vx -= (dx / dist) * force * 0.035;
+                        this.vy -= (dy / dist) * force * 0.035;
+                    } else if (mode === 'orbit') {
+                        this.vx += (dy / dist) * force * 0.018;
+                        this.vy -= (dx / dist) * force * 0.018;
+                    }
+                }
+                
+                // Apply velocity damping
+                this.vx *= 0.985;
+                this.vy *= 0.985;
+                
+                // Update position
+                this.x += this.vx * params.velocity;
+                this.y += this.vy * params.velocity;
+                
+                // Wrap around edges
+                if (this.x < 0) this.x = canvas.width;
+                if (this.x > canvas.width) this.x = 0;
+                if (this.y < 0) this.y = canvas.height;
+                if (this.y > canvas.height) this.y = 0;
+            }
+            
+            draw() {
+                ctx.save();
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = `hsla(${this.hue}, 85%, 75%, 0.6)`;
+                
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `hsla(${this.hue}, 90%, 82%, ${this.alpha})`;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+        
+        function createParticles(count) {
+            particles = [];
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle());
+            }
+        }
+        
+        function updateParticleCount() {
+            const slider = document.getElementById('count-slider');
+            const valueEl = document.getElementById('count-value');
+            
+            params.count = parseInt(slider.value);
+            valueEl.textContent = params.count.toLocaleString();
+            
+            // Adjust particle count smoothly
+            const diff = params.count - particles.length;
+            
+            if (diff > 0) {
+                for (let i = 0; i < diff; i++) {
+                    particles.push(new Particle());
+                }
+            } else if (diff < 0) {
+                particles.splice(0, Math.abs(diff));
+            }
+            
+            document.getElementById('particle-count').textContent = particles.length.toLocaleString();
+        }
+        
+        function updateParams() {
+            params.velocity = parseFloat(document.getElementById('velocity-slider').value);
+            params.force = parseFloat(document.getElementById('force-slider').value);
+            params.connectDist = parseFloat(document.getElementById('connect-slider').value);
+            
+            document.getElementById('velocity-value').textContent = params.velocity.toFixed(1);
+            document.getElementById('force-value').textContent = params.force.toFixed(1);
+            document.getElementById('connect-value').textContent = params.connectDist;
+        }
+        
+        function setMode(newMode) {
+            mode = newMode;
+            
+            // Update UI
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('mode-' + newMode).classList.add('active');
+        }
+        
+        function updateStats() {
+            frameCount++;
+            const now = performance.now();
+            
+            if (now - lastTime >= 1000) {
+                fps = Math.round(frameCount * 1000 / (now - lastTime));
+                document.getElementById('fps').textContent = fps;
+                frameCount = 0;
+                lastTime = now;
+            }
+        }
+        
+        function drawConnections() {
+            ctx.strokeStyle = 'rgba(99, 102, 241, 0.06)';
+            ctx.lineWidth = 0.8;
+            
+            for (let i = 0; i < particles.length; i++) {
+                const p1 = particles[i];
+                
+                for (let j = i + 1; j < particles.length; j++) {
+                    const p2 = particles[j];
+                    const dx = p1.x - p2.x;
+                    const dy = p1.y - p2.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < params.connectDist && dist > 0) {
+                        ctx.beginPath();
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+        
+        function animate() {
+            ctx.fillStyle = 'rgba(10, 10, 15, 0.75)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Update and draw particles
+            for (let i = 0; i < particles.length; i++) {
+                const p = particles[i];
+                p.update();
+                p.draw();
+            }
+            
+            // Draw connections
+            drawConnections();
+            
+            // Update stats
+            updateStats();
+            
+            requestAnimationFrame(animate);
+        }
+        
+        function setupEventListeners() {
+            const canvasEl = document.getElementById('canvas');
+            
+            canvasEl.addEventListener('mousemove', (e) => {
+                const rect = canvasEl.getBoundingClientRect();
+                mouse.x = e.clientX - rect.left;
+                mouse.y = e.clientY - rect.top;
+            });
+            
+            canvasEl.addEventListener('mouseleave', () => {
+                mouse.x = null;
+                mouse.y = null;
+            });
+            
+            canvasEl.addEventListener('mousedown', (e) => {
+                mouse.down = true;
+                
+                // Create repulsion burst on click
+                if (mode === 'repel') {
+                    const rect = canvasEl.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const clickY = e.clientY - rect.top;
+                    
+                    for (let p of particles) {
+                        const dx = p.x - clickX;
+                        const dy = p.y - clickY;
+                        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                        p.vx += (dx / dist) * 4;
+                        p.vy += (dy / dist) * 4;
+                    }
+                }
+            });
+            
+            window.addEventListener('mouseup', () => {
+                mouse.down = false;
+            });
+            
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.key === '1') setMode('attract');
+                if (e.key === '2') setMode('repel');
+                if (e.key === '3') setMode('orbit');
+                if (e.key.toLowerCase() === 'r') resetUniverse();
+            });
+            
+            // Sliders
+            document.getElementById('count-slider').addEventListener('input', updateParticleCount);
+            document.getElementById('velocity-slider').addEventListener('input', updateParams);
+            document.getElementById('force-slider').addEventListener('input', updateParams);
+            document.getElementById('connect-slider').addEventListener('input', updateParams);
+        }
+        
+        function resetUniverse() {
+            particles = [];
+            createParticles(params.count);
+            document.getElementById('particle-count').textContent = particles.length.toLocaleString();
+        }
+        
+        function loadPreset(preset) {
+            const countSlider = document.getElementById('count-slider');
+            const velSlider = document.getElementById('velocity-slider');
+            const forceSlider = document.getElementById('force-slider');
+            const connectSlider = document.getElementById('connect-slider');
+            
+            if (preset === 'bigbang') {
+                countSlider.value = 18500;
+                velSlider.value = 2.4;
+                forceSlider.value = 2.8;
+                connectSlider.value = 55;
+                setMode('repel');
+            } else if (preset === 'blackhole') {
+                countSlider.value = 9500;
+                velSlider.value = 0.6;
+                forceSlider.value = 3.6;
+                connectSlider.value = 115;
+                setMode('attract');
+            } else if (preset === 'galaxy') {
+                countSlider.value = 16200;
+                velSlider.value = 1.3;
+                forceSlider.value = 1.4;
+                connectSlider.value = 95;
+                setMode('orbit');
+            } else if (preset === 'supernova') {
+                countSlider.value = 22000;
+                velSlider.value = 3.1;
+                forceSlider.value = 0.9;
+                connectSlider.value = 35;
+                setMode('repel');
+            }
+            
+            updateParticleCount();
+            updateParams();
+        }
+        
+        function downloadImage() {
+            const link = document.createElement('a');
+            link.download = 'aether-universe.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        function initializeUI() {
+            // Set initial slider values
+            document.getElementById('count-value').textContent = params.count.toLocaleString();
+            document.getElementById('velocity-value').textContent = params.velocity.toFixed(1);
+            document.getElementById('force-value').textContent = params.force.toFixed(1);
+            document.getElementById('connect-value').textContent = params.connectDist;
+            
+            document.getElementById('particle-count').textContent = params.count.toLocaleString();
+            
+            // Set mode button active
+            document.getElementById('mode-attract').classList.add('active');
+        }
+        
+        // Initialize everything
+        function init() {
+            initializeTailwind();
+            initializeUI();
+            createParticles(params.count);
+            setupEventListeners();
+            
+            // Start animation
+            animate();
+            
+            // Initial particle count update display
+            setTimeout(() => {
+                document.getElementById('particle-count').textContent = particles.length.toLocaleString();
+            }, 100);
+            
+            // Easter egg: click header to randomize colors
+            document.querySelector('h1').addEventListener('click', () => {
+                particles.forEach(p => p.hue = Math.random() * 80 + 200);
+            });
+        }
+        
+        // Boot the app
+        window.onload = init;
+    </script>
+</body>
+</html>
