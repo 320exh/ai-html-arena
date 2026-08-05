@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Browser Paint Studio</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    body {
+      overscroll-behavior: none;
+    }
+    /* Custom scrollbar for layers/history panels if needed */
+    .thin-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .thin-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .thin-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.7);
+      border-radius: 999px;
+    }
+    .thin-scrollbar {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148,163,184,0.7) transparent;
+    }
+    /* Cursor previews */
+    .cursor-crosshair {
+      cursor: crosshair;
+    }
+    .cursor-eraser {
+      cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><rect x="4" y="14" width="18" height="10" fill="white" stroke="black" stroke-width="2" transform="rotate(-35 4 14)"/></svg>') 16 16, crosshair;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+  <!-- Top Bar -->
+  <header class="w-full border-b border-slate-800 bg-slate-900/90 backdrop-blur z-20">
+    <div class="max-w-6xl mx-auto flex items-center justify-between px-3 sm:px-4 py-2 gap-3">
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded bg-gradient-to-br from-sky-400 via-emerald-400 to-fuchsia-500 flex items-center justify-center text-xs font-black tracking-tight shadow-lg shadow-sky-500/40">
+          PS
+        </div>
+        <div class="leading-tight">
+          <div class="font-semibold text-sm sm:text-base">Browser Paint Studio</div>
+          <div class="text-[10px] sm:text-xs text-slate-400">Single-file canvas drawing app</div>
+        </div>
+      </div>
+      <div class="hidden md:flex items-center gap-2 text-[10px] text-slate-400">
+        <span class="px-2 py-0.5 rounded border border-slate-700/80 bg-slate-900/60">Ctrl+Z / Ctrl+Y</span>
+        <span class="px-2 py-0.5 rounded border border-slate-700/80 bg-slate-900/60">Ctrl+S: Export</span>
+        <span class="px-2 py-0.5 rounded border border-slate-700/80 bg-slate-900/60">1-7: Tools</span>
+      </div>
+      <button id="btn-clear-canvas" class="text-[11px] sm:text-xs px-2.5 py-1 rounded-md border border-red-500/70 text-red-200 hover:bg-red-500/10 active:bg-red-500/20 flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> Clear
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Layout -->
+  <main class="flex-1 w-full flex justify-center">
+    <div class="max-w-6xl w-full mx-auto flex flex-col md:flex-row gap-3 sm:gap-4 px-2 sm:px-4 py-3 sm:py-4">
+
+      <!-- Left Toolbar -->
+      <aside class="flex md:flex-col gap-2 md:gap-3 md:w-28">
+        <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-1.5 flex md:flex-col gap-1.5 shadow-lg shadow-black/40">
+          <button class="tool-btn group" data-tool="brush" title="Brush (1)">
+            <div class="tool-btn-inner">
+              <span class="i">1</span>
+              <span>Brush</span>
+            </div>
+          </button>
+          <button class="tool-btn group" data-tool="eraser" title="Eraser (2)">
+            <div class="tool-btn-inner">
+              <span class="i">2</span>
+              <span>Eraser</span>
+            </div>
+          </button>
+          <button class="tool-btn group" data-tool="line" title="Line (3)">
+            <div class="tool-btn-inner">
+              <span class="i">3</span>
+              <span>Line</span>
+            </div>
+          </button>
+          <button class="tool-btn group" data-tool="rectangle" title="Rectangle (4)">
+            <div class="tool-btn-inner">
+              <span class="i">4</span>
+              <span>Rect</span>
+            </div>
+          </button>
+          <button class="tool-btn group" data-tool="circle" title="Ellipse / Circle (5)">
+            <div class="tool-btn-inner">
+              <span class="i">5</span>
+              <span>Ellipse</span>
+            </div>
+          </button>
+          <button class="tool-btn group" data-tool="fill" title="Fill (6)">
+            <div class="tool-btn-inner">
+              <span class="i">6</span>
+              <span>Fill</span>
+            </div>
+          </button>
+          <button class="tool-btn group" data-tool="text" title="Text (7)">
+            <div class="tool-btn-inner">
+              <span class="i">7</span>
+              <span>Text</span>
+            </div>
+          </button>
+        </div>
+
+        <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-2 flex-1 flex flex-col gap-2 text-[11px]">
+          <div class="flex flex-wrap gap-1 items-center">
+            <span class="text-slate-300 font-medium">Brush</span>
+            <span id="brush-size-label" class="text-slate-400 text-[10px]">8 px</span>
+          </div>
+          <input id="brush-size" type="range" min="1" max="60" value="8" class="w-full accent-sky-400" />
+          <div class="flex items-center justify-between text-[10px] text-slate-400">
+            <span>Softness</span>
+            <span id="brush-softness-label">0%</span>
+          </div>
+          <input id="brush-softness" type="range" min="0" max="1" step="0.05" value="0" class="w-full accent-sky-300" />
+
+          <div class="mt-1 flex flex-col gap-1.5">
+            <div class="flex items-center justify-between text-[10px] text-slate-400">
+              <span>Opacity</span>
+              <span id="opacity-label">100%</span>
+            </div>
+            <input id="brush-opacity" type="range" min="0.05" max="1" step="0.05" value="1" class="w-full accent-fuchsia-400" />
+          </div>
+
+          <div class="mt-2 border-t border-slate-800 pt-2 flex flex-col gap-1.5">
+            <div class="flex items-center justify-between text-[10px] text-slate-400 mb-0.5">
+              <span>Stroke / Fill</span>
+              <button id="swap-colors" class="border border-slate-600/70 rounded px-1 py-0.5 hover:bg-slate-700/70 text-[9px]">Swap</button>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="relative w-9 h-9 rounded border border-slate-600 bg-slate-950 flex items-center justify-center overflow-hidden">
+                <input id="primary-color" type="color" value="#ffffff" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                <div id="primary-color-preview" class="w-7 h-7 rounded bg-white shadow-inner shadow-black/60"></div>
+              </div>
+              <div class="relative w-7 h-7 rounded border border-slate-700 bg-slate-950 flex items-center justify-center overflow-hidden">
+                <input id="secondary-color" type="color" value="#000000" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                <div id="secondary-color-preview" class="w-6 h-6 rounded bg-black shadow-inner shadow-black/60"></div>
+              </div>
+              <div class="flex-1 flex flex-wrap gap-1 justify-end">
+                <button class="preset-color w-4 h-4 rounded bg-white border border-slate-500" data-color="#ffffff"></button>
+                <button class="preset-color w-4 h-4 rounded bg-black border border-slate-500" data-color="#000000"></button>
+                <button class="preset-color w-4 h-4 rounded bg-red-500" data-color="#ef4444"></button>
+                <button class="preset-color w-4 h-4 rounded bg-emerald-400" data-color="#34d399"></button>
+                <button class="preset-color w-4 h-4 rounded bg-sky-400" data-color="#38bdf8"></button>
+                <button class="preset-color w-4 h-4 rounded bg-yellow-400" data-color="#facc15"></button>
+              </div>
+            </div>
+            <input id="color-hex" type="text" spellcheck="false" class="mt-1 w-full bg-slate-900/80 border border-slate-700/80 rounded px-1.5 py-0.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-sky-500/70" value="#ffffff" />
+          </div>
+        </div>
+      </aside>
+
+      <!-- Center Canvas Area -->
+      <section class="flex-1 flex flex-col gap-2 min-w-0">
+        <!-- Top controls -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-xl px-2.5 py-2 flex items-center flex-wrap gap-2 text-[11px] shadow-lg shadow-black/40">
+          <div class="flex items-center gap-1.5 border-r border-slate-800 pr-3">
+            <button id="btn-undo" class="btn-ghost">Undo</button>
+            <button id="btn-redo" class="btn-ghost">Redo</button>
+            <span class="text-[10px] text-slate-500">History: <span id="history-count">0</span></span>
+          </div>
+
+          <div class="flex items-center gap-1.5 border-r border-slate-800 pr-3">
+            <label class="flex items-center gap-1 text-slate-300">
+              <span class="text-[10px] uppercase tracking-wide text-slate-400">Mode</span>
+              <select id="shape-mode" class="bg-slate-900/80 border border-slate-700/80 rounded px-1.5 py-0.5 text-[11px] focus:outline-none">
+                <option value="stroke">Stroke</option>
+                <option value="fill">Fill</option>
+                <option value="stroke-fill">Stroke + Fill</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="flex items-center gap-1.5 border-r border-slate-800 pr-3">
+            <span class="text-[10px] uppercase tracking-wide text-slate-400">Canvas</span>
+            <select id="canvas-size" class="bg-slate-900/80 border border-slate-700/80 rounded px-1.5 py-0.5 text-[11px] focus:outline-none">
+              <option value="800x500">800 × 500</option>
+              <option value="1024x576">1024 × 576</option>
+              <option value="1280x720">1280 × 720</option>
+              <option value="1920x1080">1920 × 1080</option>
+              <option value="custom">Custom…</option>
+            </select>
+            <input id="canvas-width" type="number" min="100" max="4000" value="1024" class="w-16 bg-slate-900/80 border border-slate-800 rounded px-1 py-0.5 text-[11px]" />
+            <span class="text-slate-500 text-[10px]">×</span>
+            <input id="canvas-height" type="number" min="100" max="4000" value="576" class="w-16 bg-slate-900/80 border border-slate-800 rounded px-1 py-0.5 text-[11px]" />
+            <button id="apply-canvas-size" class="btn-ghost">Apply</button>
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <button id="btn-export-png" class="btn-solid">Export PNG</button>
+            <button id="btn-export-jpg" class="btn-ghost">Export JPG</button>
+            <label class="ml-1 border border-slate-700/80 rounded px-1.5 py-0.5 cursor-pointer hover:bg-slate-800/80 flex items-center gap-1">
+              <span class="text-[10px] text-slate-300">Import</span>
+              <input id="import-image" type="file" accept="image/*" class="hidden" />
+            </label>
+          </div>
+        </div>
+
+        <!-- Canvas Wrapper -->
+        <div class="relative flex-1 bg-slate-950/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl shadow-black/60 flex items-center justify-center">
+          <div class="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,_#020617_1px,_transparent_0)] [background-size:16px_16px] opacity-60 pointer-events-none"></div>
+          <div class="relative max-h-full max-w-full overflow-auto p-4 thin-scrollbar">
+            <canvas id="drawing-canvas" width="1024" height="576" class="bg-white rounded shadow-2xl shadow-black/70 cursor-crosshair"></canvas>
+            <canvas id="preview-canvas" width="1024" height="576" class="absolute top-4 left-4 pointer-events-none"></canvas>
+          </div>
+        </div>
+
+        <!-- Bottom bar -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-xl px-2.5 py-1.5 flex items-center justify-between text-[10px] text-slate-400">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span>Tool: <span id="current-tool-label" class="text-sky-300 font-medium">Brush</span></span>
+            <span>|</span>
+            <span>Pos: <span id="cursor-pos">- , -</span></span>
+            <span>|</span>
+            <span>Zoom: <span id="zoom-label">100%</span></span>
+          </div>
+          <div class="flex items-center gap-1">
+            <button id="zoom-out" class="btn-ghost px-1.5">-</button>
+            <button id="zoom-reset" class="btn-ghost px-1.5">100%</button>
+            <button id="zoom-in" class="btn-ghost px-1.5">+</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Panels -->
+      <aside class="w-52 hidden sm:flex flex-col gap-2">
+        <!-- Layers (simple: single main layer, but UI ready) -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-2 text-[11px] flex flex-col gap-1.5">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-slate-300 font-medium">Layers</span>
+            <span class="text-[9px] text-slate-500">(flat)</span>
+          </div>
+          <div class="thin-scrollbar max-h-40 overflow-auto space-y-1">
+            <div class="flex items-center justify-between bg-slate-800/70 rounded px-1.5 py-1 border border-slate-700/80">
+              <span class="text-slate-100">Background</span>
+              <span class="text-[9px] text-slate-400">Base</span>
+            </div>
+            <div class="flex items-center justify-between bg-slate-800/40 rounded px-1.5 py-1 border border-slate-700/60">
+              <span class="text-slate-100">Layer 1</span>
+              <span class="text-[9px] text-slate-400">Merged</span>
+            </div>
+          </div>
+          <p class="mt-1 text-[10px] text-slate-500">This simple version uses a single flattened layer but keeps a full undo/redo history.</p>
+        </div>
+
+        <!-- History preview (just counters) -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-2 text-[11px] flex flex-col gap-1.5">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-slate-300 font-medium">History</span>
+          </div>
+          <div class="space-y-1 thin-scrollbar max-h-40 overflow-auto" id="history-list"></div>
+          <p class="mt-1 text-[10px] text-slate-500">Each action snapshot is stored as a full canvas image. Use Undo / Redo or Ctrl+Z / Ctrl+Y.</p>
+        </div>
+
+        <!-- Text options -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-2 text-[11px] flex flex-col gap-1.5">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-slate-300 font-medium">Text Tool</span>
+          </div>
+          <label class="flex flex-col gap-0.5">
+            <span class="text-[10px] text-slate-400">Font family</span>
+            <select id="text-font" class="bg-slate-900/80 border border-slate-700/80 rounded px-1.5 py-0.5 text-[11px]">
+              <option value="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">System</option>
+              <option value="'Georgia', serif">Serif</option>
+              <option value="'Courier New', monospace">Monospace</option>
+            </select>
+          </label>
+          <label class="flex flex-col gap-0.5">
+            <span class="text-[10px] text-slate-400">Font size</span>
+            <input id="text-size" type="number" min="6" max="256" value="32" class="bg-slate-900/80 border border-slate-700/80 rounded px-1.5 py-0.5 text-[11px]" />
+          </label>
+          <label class="flex flex-col gap-0.5">
+            <span class="text-[10px] text-slate-400">Sample text</span>
+            <textarea id="text-sample" rows="3" class="bg-slate-900/80 border border-slate-700/80 rounded px-1.5 py-0.5 text-[11px] resize-none">Double-click to place text</textarea>
+          </label>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    // Helper: query shortcuts
+    const $ = (sel, root = document) => root.querySelector(sel);
+    const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+    // DOM elements
+    const canvas = document.getElementById('drawing-canvas');
+    const previewCanvas = document.getElementById('preview-canvas');
+    const ctx = canvas.getContext('2d');
+    const pctx = previewCanvas.getContext('2d');
+
+    const toolButtons = $$('.tool-btn');
+    const currentToolLabel = document.getElementById('current-tool-label');
+    const historyCountLabel = document.getElementById('history-count');
+    const cursorPosLabel = document.getElementById('cursor-pos');
+    const zoomLabel = document.getElementById('zoom-label');
+    const historyList = document.getElementById('history-list');
+
+    const brushSizeInput = document.getElementById('brush-size');
+    const brushSizeLabel = document.getElementById('brush-size-label');
+    const brushSoftnessInput = document.getElementById('brush-softness');
+    const brushSoftnessLabel = document.getElementById('brush-softness-label');
+    const brushOpacityInput = document.getElementById('brush-opacity');
+    const opacityLabel = document.getElementById('opacity-label');
+
+    const primaryColorInput = document.getElementById('primary-color');
+    const secondaryColorInput = document.getElementById('secondary-color');
+    const primaryColorPreview = document.getElementById('primary-color-preview');
+    const secondaryColorPreview = document.getElementById('secondary-color-preview');
+    const colorHexInput = document.getElementById('color-hex');
+    const swapColorsBtn = document.getElementById('swap-colors');
+
+    const shapeModeSelect = document.getElementById('shape-mode');
+
+    const canvasSizeSelect = document.getElementById('canvas-size');
+    const canvasWidthInput = document.getElementById('canvas-width');
+    const canvasHeightInput = document.getElementById('canvas-height');
+    const applyCanvasSizeBtn = document.getElementById('apply-canvas-size');
+
+    const importImageInput = document.getElementById('import-image');
+    const btnExportPng = document.getElementById('btn-export-png');
+    const btnExportJpg = document.getElementById('btn-export-jpg');
+
+    const btnUndo = document.getElementById('btn-undo');
+    const btnRedo = document.getElementById('btn-redo');
+    const btnClearCanvas = document.getElementById('btn-clear-canvas');
+
+    const zoomOutBtn = document.getElementById('zoom-out');
+    const zoomInBtn = document.getElementById('zoom-in');
+    const zoomResetBtn = document.getElementById('zoom-reset');
+
+    const textFontSelect = document.getElementById('text-font');
+    const textSizeInput = document.getElementById('text-size');
+    const textSampleTextarea = document.getElementById('text-sample');
+
+    // State
+    const state = {
+      tool: 'brush',
+      brushSize: 8,
+      brushSoftness: 0,
+      opacity: 1,
+      primaryColor: '#ffffff',
+      secondaryColor: '#000000',
+      shapeMode: 'stroke',
+      isDrawing: false,
+      lastX: 0,
+      lastY: 0,
+      startX: 0,
+      startY: 0,
+      zoom: 1,
+      history: [],
+      historyIndex: -1,
+      maxHistory: 50,
+      isMouseDown: false,
+      textFont: textFontSelect.value,
+      textSize: parseInt(textSizeInput.value, 10) || 32,
+      textValue: textSampleTextarea.value,
+    };
+
+    function setCanvasSize(w, h, keepContent = true) {
+      const old = document.createElement('canvas');
+      old.width = canvas.width;
+      old.height = canvas.height;
+      old.getContext('2d').drawImage(canvas, 0, 0);
+
+      canvas.width = w;
+      canvas.height = h;
+      previewCanvas.width = w;
+      previewCanvas.height = h;
+
+      if (keepContent) {
+        ctx.drawImage(old, 0, 0);
+      } else {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, w, h);
+      }
+
+      pushHistory('Resize canvas');
+    }
+
+    function hexToRgba(hex, alpha) {
+      const c = hex.replace('#', '');
+      const bigint = parseInt(c, 16);
+      const r = (bigint >> 16) & 255;
+      const g = (bigint >> 8) & 255;
+      const b = bigint & 255;
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    function setTool(tool) {
+      state.tool = tool;
+      currentToolLabel.textContent = tool.charAt(0).toUpperCase() + tool.slice(1);
+      toolButtons.forEach(btn => {
+        if (btn.dataset.tool === tool) {
+          btn.classList.add('bg-sky-500/20', 'border-sky-400/70');
+        } else {
+          btn.classList.remove('bg-sky-500/20', 'border-sky-400/70');
+        }
+      });
+      if (tool === 'eraser') {
+        canvas.classList.add('cursor-eraser');
+      } else {
+        canvas.classList.remove('cursor-eraser');
+      }
+    }
+
+    function setPrimaryColor(color) {
+      state.primaryColor = color;
+      primaryColorPreview.style.background = color;
+      primaryColorInput.value = color;
+      colorHexInput.value = color.toLowerCase();
+    }
+
+    function setSecondaryColor(color) {
+      state.secondaryColor = color;
+      secondaryColorPreview.style.background = color;
+      secondaryColorInput.value = color;
+    }
+
+    function pushHistory(label = 'Edit') {
+      try {
+        const dataUrl = canvas.toDataURL('image/png');
+        if (state.historyIndex < state.history.length - 1) {
+          state.history = state.history.slice(0, state.historyIndex + 1);
+        }
+        state.history.push({ dataUrl, label, ts: new Date() });
+        if (state.history.length > state.maxHistory) {
+          state.history.shift();
+        }
+        state.historyIndex = state.history.length - 1;
+        updateHistoryUI();
+      } catch (e) {
+        console.warn('Failed to push history', e);
+      }
+    }
+
+    function restoreHistory(index) {
+      const entry = state.history[index];
+      if (!entry) return;
+      const img = new Image();
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+      };
+      img.src = entry.dataUrl;
+    }
+
+    function updateHistoryUI() {
+      historyCountLabel.textContent = `${state.historyIndex + 1}/${state.history.length}`;
+      historyList.innerHTML = '';
+      state.history.forEach((h, i) => {
+        const div = document.createElement('div');
+        div.className = 'px-1.5 py-0.5 rounded flex items-center justify-between text-[10px] ' + (i === state.historyIndex ? 'bg-sky-500/20 border border-sky-500/60 text-sky-200' : 'bg-slate-800/60 border border-slate-700/60 text-slate-300');
+        const timeStr = h.ts instanceof Date ? h.ts.toLocaleTimeString() : '';
+        div.innerHTML = `<span class="truncate max-w-[90px]">${h.label}</span><span class="ml-1 text-[9px] text-slate-400">${timeStr}</span>`;
+        historyList.appendChild(div);
+      });
+    }
+
+    function undo() {
+      if (state.historyIndex <= 0) return;
+      state.historyIndex--;
+      restoreHistory(state.historyIndex);
+      updateHistoryUI();
+    }
+
+    function redo() {
+      if (state.historyIndex >= state.history.length - 1) return;
+      state.historyIndex++;
+      restoreHistory(state.historyIndex);
+      updateHistoryUI();
+    }
+
+    function getCanvasCoords(evt) {
+      const rect = canvas.getBoundingClientRect();
+      const x = (evt.clientX - rect.left) * (canvas.width / rect.width);
+      const y = (evt.clientY - rect.top) * (canvas.height / rect.height);
+      return { x, y };
+    }
+
+    function startDrawing(evt) {
+      const { x, y } = getCanvasCoords(evt);
+      state.isDrawing = true;
+      state.isMouseDown = true;
+      state.lastX = x;
+      state.lastY = y;
+      state.startX = x;
+      state.startY = y;
+      if (['line', 'rectangle', 'circle'].includes(state.tool)) {
+        pctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+      } else if (state.tool === 'fill') {
+        floodFill(x, y);
+        pushHistory('Fill');
+      } else if (state.tool === 'text') {
+        // handled on double-click instead
+      } else {
+        drawStroke(x, y, true);
+      }
+    }
+
+    function continueDrawing(evt) {
+      if (!state.isDrawing) return;
+      const { x, y } = getCanvasCoords(evt);
+      cursorPosLabel.textContent = `${x.toFixed(0)}, ${y.toFixed(0)}`;
+
+      if (state.tool === 'brush' || state.tool === 'eraser') {
+        drawStroke(x, y, false);
+        state.lastX = x;
+        state.lastY = y;
+      } else if (['line', 'rectangle', 'circle'].includes(state.tool)) {
+        drawShapePreview(x, y);
+      }
+    }
+
+    function stopDrawing(evt) {
+      if (!state.isDrawing) return;
+      state.isDrawing = false;
+      state.isMouseDown = false;
+      const { x, y } = getCanvasCoords(evt);
+      if (['line', 'rectangle', 'circle'].includes(state.tool)) {
+        drawShapeCommit(x, y);
+        pctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+        pushHistory('Shape');
+      } else if (state.tool === 'brush' || state.tool === 'eraser') {
+        pushHistory('Stroke');
+      }
+    }
+
+    function drawStroke(x, y, isStart) {
+      const color = state.tool === 'eraser' ? '#ffffff' : state.primaryColor;
+      const alpha = state.tool === 'eraser' ? 1 : state.opacity;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      if (state.brushSoftness > 0 && state.tool !== 'eraser') {
+        const radius = state.brushSize / 2;
+        const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+        const innerAlpha = alpha;
+        const outerAlpha = alpha * (1 - state.brushSoftness);
+        gradient.addColorStop(0, hexToRgba(color, innerAlpha));
+        gradient.addColorStop(1, hexToRgba(color, outerAlpha));
+
+        ctx.fillStyle = gradient;
+        const steps = Math.max(1, Math.round(Math.hypot(x - state.lastX, y - state.lastY) / (radius / 2)));
+        for (let i = 0; i <= steps; i++) {
+          const t = i / steps;
+          const ix = state.lastX + (x - state.lastX) * t;
+          const iy = state.lastY + (y - state.lastY) * t;
+          ctx.beginPath();
+          ctx.arc(ix, iy, radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        ctx.strokeStyle = hexToRgba(color, alpha);
+        ctx.lineWidth = state.brushSize;
+        ctx.beginPath();
+        ctx.moveTo(state.lastX, state.lastY);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      }
+    }
+
+    function applyShapeStyle(targetCtx, mode, startX, startY, endX, endY) {
+      if (mode === 'stroke' || mode === 'stroke-fill') {
+        targetCtx.lineWidth = state.brushSize;
+        targetCtx.strokeStyle = hexToRgba(state.primaryColor, state.opacity);
+      }
+      if (mode === 'fill' || mode === 'stroke-fill') {
+        targetCtx.fillStyle = hexToRgba(state.secondaryColor, state.opacity);
+      }
+    }
+
+    function drawShapePreview(x, y) {
+      pctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+      const { startX, startY } = state;
+      const mode = state.shapeMode;
+      pctx.save();
+      applyShapeStyle(pctx, mode, startX, startY, x, y);
+
+      if (state.tool === 'line') {
+        pctx.beginPath();
+        pctx.moveTo(startX, startY);
+        pctx.lineTo(x, y);
+        if (mode !== 'fill') pctx.stroke();
+      } else if (state.tool === 'rectangle') {
+        const w = x - startX;
+        const h = y - startY;
+        if (mode === 'fill' || mode === 'stroke-fill') pctx.fillRect(startX, startY, w, h);
+        if (mode === 'stroke' || mode === 'stroke-fill') pctx.strokeRect(startX, startY, w, h);
+      } else if (state.tool === 'circle') {
+        const rx = (x - startX) / 2;
+        const ry = (y - startY) / 2;
+        const cx = startX + rx;
+        const cy = startY + ry;
+        pctx.beginPath();
+        pctx.ellipse(cx, cy, Math.abs(rx), Math.abs(ry), 0, 0, Math.PI * 2);
+        if (mode === 'fill' || mode === 'stroke-fill') pctx.fill();
+        if (mode === 'stroke' || mode === 'stroke-fill') pctx.stroke();
+      }
+      pctx.restore();
+    }
+
+    function drawShapeCommit(x, y) {
+      const { startX, startY } = state;
+      const mode = state.shapeMode;
+      ctx.save();
+      applyShapeStyle(ctx, mode, startX, startY, x, y);
+
+      if (state.tool === 'line') {
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(x, y);
+        if (mode !== 'fill') ctx.stroke();
+      } else if (state.tool === 'rectangle') {
+        const w = x - startX;
+        const h = y - startY;
+        if (mode === 'fill' || mode === 'stroke-fill') ctx.fillRect(startX, startY, w, h);
+        if (mode === 'stroke' || mode === 'stroke-fill') ctx.strokeRect(startX, startY, w, h);
+      } else if (state.tool === 'circle') {
+        const rx = (x - startX) / 2;
+        const ry = (y - startY) / 2;
+        const cx = startX + rx;
+        const cy = startY + ry;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, Math.abs(rx), Math.abs(ry), 0, Math.PI * 2, false);
+        if (mode === 'fill' || mode === 'stroke-fill') ctx.fill();
+        if (mode === 'stroke' || mode === 'stroke-fill') ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function floodFill(startX, startY) {
+      const targetColor = getPixelColor(startX, startY);
+      const fillColor = hexToRgba(state.primaryColor, 1);
+      if (colorsMatchRgbaString(targetColor, fillColor)) return;
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      const width = imageData.width;
+      const height = imageData.height;
+
+      const [tr, tg, tb, ta] = getPixelComponents(startX, startY, data, width, height);
+      const [fr, fg, fb, fa] = parseRgbaString(fillColor);
+
+      const stack = [[Math.round(startX), Math.round(startY)]];
+      const visited = new Uint8Array(width * height);
+
+      const colorMatch = (r, g, b, a) => {
+        return Math.abs(r - tr) < 10 && Math.abs(g - tg) < 10 && Math.abs(b - tb) < 10 && Math.abs(a - ta) < 10;
+      };
+
+      while (stack.length) {
+        const [x, y] = stack.pop();
+        if (x < 0 || x >= width || y < 0 || y >= height) continue;
+        const idx = y * width + x;
+        if (visited[idx]) continue;
+        visited[idx] = 1;
+        const di = idx * 4;
+        const r = data[di];
+        const g = data[di + 1];
+        const b = data[di + 2];
+        const a = data[di + 3];
+        if (!colorMatch(r, g, b, a)) continue;
+
+        data[di] = fr;
+        data[di + 1] = fg;
+        data[di + 2] = fb;
+        data[di + 3] = fa;
+
+        stack.push([x + 1, y]);
+        stack.push([x - 1, y]);
+        stack.push([x, y + 1]);
+        stack.push([x, y - 1]);
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+    }
+
+    function getPixelComponents(x, y, data, width, height) {
+      const ix = Math.round(x);
+      const iy = Math.round(y);
+      const index = (iy * width + ix) * 4;
+      return [data[index], data[index + 1], data[index + 2], data[index + 3]];
+    }
+
+    function parseRgbaString(str) {
+      const match = str.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*(\d*\.?\d+)\)/);
+      if (!match) return [0, 0, 0, 255];
+      const r = parseInt(match[1]);
+      const g = parseInt(match[2]);
+      const b = parseInt(match[3]);
+      const a = Math.round(parseFloat(match[4]) * 255);
+      return [r, g, b, a];
+    }
+
+    function colorsMatchRgbaString(c1, c2) {
+      return c1 === c2;
+    }
+
+    function getPixelColor(x, y) {
+      const imageData = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data;
+      const [r, g, b, a] = imageData;
+      return `rgba(${r}, ${g}, ${b}, ${a / 255})`;
+    }
+
+    function exportCanvas(type) {
+      const ext = type === 'image/jpeg' ? 'jpg' : 'png';
+      const dataUrl = canvas.toDataURL(type, type === 'image/jpeg' ? 0.92 : undefined);
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = `paint-${Date.now()}.${ext}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function zoomCanvas(delta) {
+      state.zoom = Math.min(4, Math.max(0.25, state.zoom + delta));
+      const scale = state.zoom;
+      canvas.style.transform = `scale(${scale})`;
+      previewCanvas.style.transform = `scale(${scale})`;
+      zoomLabel.textContent = `${Math.round(scale * 100)}%`;
+    }
+
+    function resetZoom() {
+      state.zoom = 1;
+      canvas.style.transform = 'scale(1)';
+      previewCanvas.style.transform = 'scale(1)';
+      zoomLabel.textContent = '100%';
+    }
+
+    function handleTextPlacement(evt) {
+      const { x, y } = getCanvasCoords(evt);
+      ctx.save();
+      ctx.font = `${state.textSize}px ${state.textFont}`;
+      ctx.fillStyle = hexToRgba(state.primaryColor, state.opacity);
+      const lines = state.textValue.split(/\n/);
+      lines.forEach((line, i) => {
+        ctx.fillText(line, x, y + i * state.textSize * 1.2);
+      });
+      ctx.restore();
+      pushHistory('Text');
+    }
+
+    function initEvents() {
+      canvas.addEventListener('mousedown', startDrawing);
+      window.addEventListener('mousemove', continueDrawing);
+      window.addEventListener('mouseup', stopDrawing);
+      canvas.addEventListener('mouseleave', () => { state.isDrawing = false; state.isMouseDown = false; });
+
+      canvas.addEventListener('mousemove', (evt) => {
+        const { x, y } = getCanvasCoords(evt);
+        cursorPosLabel.textContent = `${x.toFixed(0)}, ${y.toFixed(0)}`;
+      });
+
+      canvas.addEventListener('dblclick', (evt) => {
+        if (state.tool === 'text') {
+          handleTextPlacement(evt);
+        }
+      });
+
+      toolButtons.forEach(btn => {
+        btn.classList.add('bg-slate-900/80', 'border', 'border-slate-700/70', 'rounded-lg', 'px-2', 'py-1', 'hover:bg-slate-800/80', 'text-[11px]', 'text-slate-200');
+        const inner = btn.querySelector('.tool-btn-inner');
+        if (inner) {
+          inner.classList.add('flex', 'items-center', 'justify-between', 'gap-1', 'w-full');
+          const iSpan = inner.querySelector('.i');
+          if (iSpan) {
+            iSpan.classList.add('w-4', 'h-4', 'rounded', 'bg-slate-800', 'text-[9px]', 'flex', 'items-center', 'justify-center', 'text-slate-400');
+          }
+        }
+        btn.addEventListener('click', () => setTool(btn.dataset.tool));
+      });
+
+      setTool('brush');
+
+      brushSizeInput.addEventListener('input', () => {
+        state.brushSize = parseInt(brushSizeInput.value, 10) || 1;
+        brushSizeLabel.textContent = `${state.brushSize} px`;
+      });
+
+      brushSoftnessInput.addEventListener('input', () => {
+        state.brushSoftness = parseFloat(brushSoftnessInput.value) || 0;
+        brushSoftnessLabel.textContent = `${Math.round(state.brushSoftness * 100)}%`;
+      });
+
+      brushOpacityInput.addEventListener('input', () => {
+        state.opacity = parseFloat(brushOpacityInput.value) || 1;
+        opacityLabel.textContent = `${Math.round(state.opacity * 100)}%`;
+      });
+
+      primaryColorInput.addEventListener('input', () => setPrimaryColor(primaryColorInput.value));
+      secondaryColorInput.addEventListener('input', () => setSecondaryColor(secondaryColorInput.value));
+      colorHexInput.addEventListener('change', () => {
+        const v = colorHexInput.value.trim();
+        if (/^#?[0-9a-fA-F]{6}$/.test(v)) {
+          const c = v.startsWith('#') ? v : '#' + v;
+          setPrimaryColor(c);
+        } else {
+          colorHexInput.value = state.primaryColor;
+        }
+      });
+
+      $$('.preset-color').forEach(btn => {
+        btn.addEventListener('click', () => setPrimaryColor(btn.dataset.color));
+      });
+
+      swapColorsBtn.addEventListener('click', () => {
+        const tmp = state.primaryColor;
+        setPrimaryColor(state.secondaryColor);
+        setSecondaryColor(tmp);
+      });
+
+      shapeModeSelect.addEventListener('change', () => {
+        state.shapeMode = shapeModeSelect.value;
+      });
+
+      canvasSizeSelect.addEventListener('change', () => {
+        if (canvasSizeSelect.value === 'custom') return;
+        const [w, h] = canvasSizeSelect.value.split('x').map(Number);
+        canvasWidthInput.value = w;
+        canvasHeightInput.value = h;
+      });
+
+      applyCanvasSizeBtn.addEventListener('click', () => {
+        const w = Math.max(100, Math.min(4000, parseInt(canvasWidthInput.value, 10) || canvas.width));
+        const h = Math.max(100, Math.min(4000, parseInt(canvasHeightInput.value, 10) || canvas.height));
+        setCanvasSize(w, h, true);
+      });
+
+      importImageInput.addEventListener('change', (evt) => {
+        const file = evt.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const scale = Math.min(canvas.width / img.width, canvas.height / img.height, 1);
+            const w = img.width * scale;
+            const h = img.height * scale;
+            const x = (canvas.width - w) / 2;
+            const y = (canvas.height - h) / 2;
+            ctx.drawImage(img, x, y, w, h);
+            pushHistory('Import image');
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+        importImageInput.value = '';
+      });
+
+      btnExportPng.addEventListener('click', () => exportCanvas('image/png'));
+      btnExportJpg.addEventListener('click', () => exportCanvas('image/jpeg'));
+
+      btnUndo.addEventListener('click', undo);
+      btnRedo.addEventListener('click', redo);
+      btnClearCanvas.addEventListener('click', () => {
+        const ok = confirm('Clear the entire canvas? This cannot be undone except via history.');
+        if (!ok) return;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        pushHistory('Clear canvas');
+      });
+
+      zoomOutBtn.addEventListener('click', () => zoomCanvas(-0.25));
+      zoomInBtn.addEventListener('click', () => zoomCanvas(0.25));
+      zoomResetBtn.addEventListener('click', resetZoom);
+
+      textFontSelect.addEventListener('change', () => {
+        state.textFont = textFontSelect.value;
+      });
+      textSizeInput.addEventListener('change', () => {
+        state.textSize = parseInt(textSizeInput.value, 10) || 32;
+      });
+      textSampleTextarea.addEventListener('input', () => {
+        state.textValue = textSampleTextarea.value;
+      });
+
+      window.addEventListener('keydown', (evt) => {
+        if (evt.target && (evt.target.matches('input') || evt.target.matches('textarea'))) return;
+        if ((evt.ctrlKey || evt.metaKey) && !evt.shiftKey && evt.key.toLowerCase() === 'z') {
+          evt.preventDefault();
+          undo();
+        } else if ((evt.ctrlKey || evt.metaKey) && (evt.key.toLowerCase() === 'y' || (evt.shiftKey && evt.key.toLowerCase() === 'z'))) {
+          evt.preventDefault();
+          redo();
+        } else if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 's') {
+          evt.preventDefault();
+          exportCanvas('image/png');
+        } else if (!evt.ctrlKey && !evt.metaKey) {
+          switch (evt.key) {
+            case '1': setTool('brush'); break;
+            case '2': setTool('eraser'); break;
+            case '3': setTool('line'); break;
+            case '4': setTool('rectangle'); break;
+            case '5': setTool('circle'); break;
+            case '6': setTool('fill'); break;
+            case '7': setTool('text'); break;
+          }
+        }
+      });
+    }
+
+    function init() {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      setPrimaryColor('#000000');
+      setSecondaryColor('#ffffff');
+      pushHistory('Initial state');
+      initEvents();
+    }
+
+    init();
+  </script>
+</body>
+</html>

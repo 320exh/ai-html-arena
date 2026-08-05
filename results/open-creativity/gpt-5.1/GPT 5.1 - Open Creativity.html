@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Neon Cosmos Lab</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    body {
+      background: radial-gradient(circle at 10% 20%, #050816 0, #020617 40%, #000 100%);
+      color: #e5e7eb;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+    }
+    .glass {
+      background: radial-gradient(circle at top left, rgba(96,165,250,0.25), transparent 55%),
+                  radial-gradient(circle at bottom right, rgba(236,72,153,0.25), transparent 55%);
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
+      border: 1px solid rgba(148,163,184,0.4);
+    }
+    .floating {
+      animation: float 12s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% {
+        transform: translate3d(0, 0, 0) rotate3d(0,0,1,0deg);
+      }
+      25% {
+        transform: translate3d(10px, -14px, 0) rotate3d(0,0,1,2deg);
+      }
+      50% {
+        transform: translate3d(-6px, 4px, 0) rotate3d(0,0,1,-1deg);
+      }
+      75% {
+        transform: translate3d(4px, 12px, 0) rotate3d(0,0,1,1deg);
+      }
+    }
+    .btn-glow {
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-glow::before {
+      content: "";
+      position: absolute;
+      inset: -120%;
+      background: conic-gradient(from 0deg, #22d3ee, #4f46e5, #f97316, #ec4899, #22d3ee);
+      animation: spin 9s linear infinite;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    .btn-glow::after {
+      content: "";
+      position: absolute;
+      inset: 2px;
+      border-radius: 9999px;
+      background: radial-gradient(circle at 0% 0%, rgba(248,250,252,0.1), rgba(15,23,42,0.98));
+    }
+    .btn-inner {
+      position: relative;
+      z-index: 10;
+    }
+    .btn-glow:hover::before {
+      opacity: 1;
+    }
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    .panel-nav button[data-active="true"] {
+      background: linear-gradient(to right, #4f46e5, #ec4899);
+      box-shadow: 0 0 30px rgba(96,165,250,0.5);
+    }
+    .scrollbar-thin::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background: rgba(148,163,184,0.6);
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="font-sans antialiased text-slate-100">
+  <canvas id="universe" class="fixed inset-0 -z-10"></canvas>
+
+  <main class="relative h-screen w-screen flex flex-col lg:flex-row">
+    <!-- LEFT PANEL: Hero & controls -->
+    <section class="w-full lg:w-[38%] xl:w-[32%] h-[42%] lg:h-full flex flex-col p-4 sm:p-6 lg:p-8 gap-4 sm:gap-6">
+      <div class="glass rounded-3xl p-5 sm:p-7 md:p-8 flex flex-col gap-5 shadow-2xl border-slate-700/60">
+        <div class="flex items-center justify-between gap-3">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/70 border border-slate-700/70">
+            <span class="inline-flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_12px_rgba(52,211,153,0.8)]"></span>
+            <span class="text-[11px] sm:text-xs tracking-[0.18em] uppercase text-slate-300/90">Real-time Cosmic Playground</span>
+          </div>
+          <button id="themeToggle" class="h-8 w-8 rounded-full border border-slate-600/70 flex items-center justify-center text-xs text-slate-200/90 hover:bg-slate-800/80 transition">
+            ☾
+          </button>
+        </div>
+
+        <div class="space-y-2 sm:space-y-3">
+          <h1 class="text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight leading-tight">
+            Neon <span class="bg-gradient-to-r from-sky-400 via-violet-400 to-fuchsia-400 bg-clip-text text-transparent">Cosmos Lab</span>
+          </h1>
+          <p class="text-sm sm:text-base text-slate-300/90 max-w-xl">
+            Paint a living universe with particles, gravity wells, audio-reactive waves, and generative constellations.
+            Everything runs in your browser, in real time.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 text-[11px] sm:text-xs text-slate-300/80">
+          <span class="px-2 py-1 rounded-full bg-slate-900/80 border border-sky-500/40 text-sky-200/90">WebGL-less Canvas</span>
+          <span class="px-2 py-1 rounded-full bg-slate-900/80 border border-fuchsia-500/40 text-fuchsia-200/90">Audio Reactive</span>
+          <span class="px-2 py-1 rounded-full bg-slate-900/80 border border-emerald-500/40 text-emerald-200/90">Generative Art</span>
+        </div>
+
+        <div class="flex flex-col gap-4">
+          <div class="flex flex-wrap gap-3">
+            <button id="btnTour" class="btn-glow rounded-full px-[3px] py-[3px] text-sm">
+              <span class="btn-inner flex items-center gap-2 px-4 py-1.5">
+                <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900/80 border border-sky-500/70 text-[10px]">▶</span>
+                <span class="font-medium tracking-wide">Auto Tour</span>
+              </span>
+            </button>
+            <button id="btnReset" class="rounded-full border border-slate-600/80 bg-slate-900/60 px-4 py-1.5 text-xs sm:text-sm text-slate-200 hover:bg-slate-800/80 transition flex items-center gap-1.5">
+              <span>↺</span>
+              <span>Reset Universe</span>
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2 text-[11px] text-slate-400">
+            <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900/80 border border-slate-700/80 text-[10px]">?</span>
+            <span>Drag to orbit, scroll to zoom, click to seed stars. Try toggling modes below.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mode selector & quick controls -->
+      <div class="glass rounded-3xl p-4 sm:p-5 flex flex-col gap-4">
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-xs font-semibold tracking-[0.2em] uppercase text-slate-300/90">Modes</h2>
+          <div class="flex items-center gap-1 text-[11px] text-slate-400">
+            <span class="h-1.5 w-1.5 rounded-full bg-sky-400"></span> Live
+          </div>
+        </div>
+        <div class="panel-nav grid grid-cols-3 gap-2 text-[11px] sm:text-xs">
+          <button data-mode="orbits" data-active="true" class="rounded-xl border border-slate-700/80 bg-slate-900/80 px-2 py-2 flex flex-col gap-1 text-left hover:border-sky-500/60 transition">
+            <span class="font-medium text-slate-100 flex items-center gap-1.5">
+              <span class="h-4 w-4 rounded-full bg-gradient-to-tr from-sky-400 to-indigo-500 shadow-[0_0_18px_rgba(56,189,248,0.9)]"></span>
+              Orbits
+            </span>
+            <span class="text-[10px] text-slate-400">Gravity wells & trails</span>
+          </button>
+          <button data-mode="waves" class="rounded-xl border border-slate-700/80 bg-slate-900/60 px-2 py-2 flex flex-col gap-1 text-left hover:border-emerald-400/60 transition">
+            <span class="font-medium text-slate-100 flex items-center gap-1.5">
+              <span class="h-4 w-4 rounded-sm bg-gradient-to-tr from-emerald-400 to-cyan-400 shadow-[0_0_18px_rgba(34,197,94,0.9)]"></span>
+              Wavefield
+            </span>
+            <span class="text-[10px] text-slate-400">Audio-reactive fabric</span>
+          </button>
+          <button data-mode="constellations" class="rounded-xl border border-slate-700/80 bg-slate-900/60 px-2 py-2 flex flex-col gap-1 text-left hover:border-fuchsia-400/60 transition">
+            <span class="font-medium text-slate-100 flex items-center gap-1.5">
+              <span class="h-4 w-4 rounded-full border border-fuchsia-400 shadow-[0_0_18px_rgba(236,72,153,0.9)]"></span>
+              Constellations
+            </span>
+            <span class="text-[10px] text-slate-400">Connect the stars</span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 text-[11px] sm:text-xs">
+          <label class="flex flex-col gap-1">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-200">Particle count</span>
+              <span id="labelCount" class="text-slate-400">600</span>
+            </div>
+            <input id="rangeCount" type="range" min="150" max="1200" value="600" class="w-full accent-sky-400">
+          </label>
+          <label class="flex flex-col gap-1">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-200">Chaos</span>
+              <span id="labelChaos" class="text-slate-400">0.55</span>
+            </div>
+            <input id="rangeChaos" type="range" min="0" max="1" step="0.01" value="0.55" class="w-full accent-fuchsia-400">
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL: Visualizer & side tools -->
+    <section class="relative flex-1 h-[58%] lg:h-full flex flex-col p-3 sm:p-4 lg:p-6 gap-3 sm:gap-4">
+      <!-- Canvas overlay HUD -->
+      <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div class="floating w-[45vw] max-w-xl aspect-square rounded-full border border-slate-700/70 bg-radial from-sky-500/20 via-indigo-500/5 to-transparent blur-3xl opacity-60"></div>
+      </div>
+
+      <div class="relative flex-1 flex flex-col gap-3">
+        <div class="absolute inset-0 rounded-3xl border border-slate-800/80 bg-gradient-to-br from-slate-900/95 via-slate-950/95 to-black/95 overflow-hidden">
+          <!-- This is just a container; visuals are drawn on the full-screen canvas behind -->
+        </div>
+
+        <!-- Top HUD -->
+        <div class="relative z-10 flex items-center justify-between px-4 pt-3">
+          <div class="flex items-center gap-2 text-[11px] sm:text-xs text-slate-300/90">
+            <span class="inline-flex h-1.5 w-10 rounded-full bg-gradient-to-r from-sky-400 via-violet-400 to-fuchsia-400 animate-pulse"></span>
+            <span id="hudMode">ORBITAL PARTICLE FIELD</span>
+          </div>
+          <div class="flex items-center gap-3 text-[11px] text-slate-400">
+            <span id="hudFPS">FPS: 0</span>
+            <span class="hidden sm:inline">•</span>
+            <span class="hidden sm:inline" id="hudParticles">Particles: 0</span>
+          </div>
+        </div>
+
+        <!-- Bottom panel: console & presets -->
+        <div class="relative z-10 mt-auto p-3 sm:p-4">
+          <div class="glass rounded-2xl sm:rounded-3xl p-3 sm:p-4 flex flex-col gap-3 border-slate-700/70">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2 text-[11px] sm:text-xs">
+                <span class="px-2 py-0.5 rounded-full bg-slate-900/80 border border-slate-700/70 text-slate-300/90 font-mono">cosmos&gt;</span>
+                <span id="consoleText" class="text-slate-300/90">Ready. Click anywhere to seed a star system.</span>
+              </div>
+              <div class="flex items-center gap-1 text-[10px] text-slate-400">
+                <span class="hidden sm:inline">Hold</span>
+                <span class="px-1.5 py-0.5 rounded border border-slate-600/80 bg-slate-900/80 font-mono">Shift</span>
+                <span class="hidden sm:inline">for slow motion</span>
+              </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 text-[11px] sm:text-xs">
+              <div class="flex-1 flex flex-wrap gap-1.5">
+                <button data-preset="nebula" class="preset-btn px-2.5 py-1 rounded-full bg-slate-900/80 border border-sky-500/60 text-sky-100 hover:bg-slate-800/90 transition">Neon Nebula</button>
+                <button data-preset="grid" class="preset-btn px-2.5 py-1 rounded-full bg-slate-900/80 border border-emerald-500/60 text-emerald-100 hover:bg-slate-800/90 transition">Quantum Grid</button>
+                <button data-preset="storm" class="preset-btn px-2.5 py-1 rounded-full bg-slate-900/80 border border-fuchsia-500/60 text-fuchsia-100 hover:bg-slate-800/90 transition">Solar Storm</button>
+              </div>
+              <div class="flex items-center gap-2 justify-end">
+                <button id="btnAudio" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-600/80 bg-slate-900/80 text-slate-200 hover:bg-slate-800/90 transition">
+                  <span id="audioDot" class="h-1.5 w-1.5 rounded-full bg-slate-500"></span>
+                  <span>Audio React</span>
+                </button>
+                <button id="btnSnapshot" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-600/80 bg-slate-900/80 text-slate-200 hover:bg-slate-800/90 transition">
+                  <span>📸</span>
+                  <span class="hidden sm:inline">Snapshot</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Side mini inspector -->
+        <aside class="pointer-events-none absolute right-3 top-16 sm:right-5 sm:top-20 z-20 w-40 sm:w-52">
+          <div class="pointer-events-auto glass rounded-2xl border-slate-700/70 p-2.5 sm:p-3 text-[10px] sm:text-xs flex flex-col gap-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-300/90 font-medium">Inspector</span>
+              <span class="px-1.5 py-0.5 rounded-full bg-slate-900/80 border border-slate-700/80 font-mono text-[10px]">TAB</span>
+            </div>
+            <div class="grid grid-cols-2 gap-x-2 gap-y-1 text-slate-400">
+              <div>Zoom</div><div id="infoZoom" class="text-right text-slate-200">1.0x</div>
+              <div>Energy</div><div id="infoEnergy" class="text-right text-slate-200">0.00</div>
+              <div>Mode</div><div id="infoMode" class="text-right text-slate-200">Orbits</div>
+              <div>Preset</div><div id="infoPreset" class="text-right text-slate-200">Custom</div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // ====== Core Canvas & Utilities ======
+    const canvas = document.getElementById('universe');
+    const ctx = canvas.getContext('2d');
+
+    const DPR = Math.min(window.devicePixelRatio || 1, 2);
+    let width = 0, height = 0, centerX = 0, centerY = 0;
+
+    function resize() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      centerX = width / 2;
+      centerY = height / 2;
+      canvas.width = width * DPR;
+      canvas.height = height * DPR;
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function rand(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
+
+    function clamp(v, min, max) {
+      return v < min ? min : v > max ? max : v;
+    }
+
+    // ====== State ======
+    const state = {
+      mode: 'orbits',
+      particles: [],
+      maxParticles: 600,
+      chaos: 0.55,
+      zoom: 1,
+      offsetX: 0,
+      offsetY: 0,
+      drag: false,
+      dragStart: { x: 0, y: 0 },
+      viewStart: { x: 0, y: 0 },
+      time: 0,
+      lastFrameTime: performance.now(),
+      fps: 0,
+      motionSlow: false,
+      preset: 'Custom',
+    };
+
+    // ====== Input Handlers ======
+    canvas.addEventListener('mousedown', (e) => {
+      if (e.button === 0) {
+        // Left click: seed particles
+        seedCluster(e.clientX, e.clientY);
+      } else if (e.button === 1 || e.button === 2) {
+        // Middle/right: drag
+        startDrag(e);
+      }
+    });
+
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    function startDrag(e) {
+      state.drag = true;
+      state.dragStart.x = e.clientX;
+      state.dragStart.y = e.clientY;
+      state.viewStart.x = state.offsetX;
+      state.viewStart.y = state.offsetY;
+    }
+
+    window.addEventListener('mousemove', (e) => {
+      if (!state.drag) return;
+      const dx = (e.clientX - state.dragStart.x) / state.zoom;
+      const dy = (e.clientY - state.dragStart.y) / state.zoom;
+      state.offsetX = state.viewStart.x + dx;
+      state.offsetY = state.viewStart.y + dy;
+    });
+
+    window.addEventListener('mouseup', () => {
+      state.drag = false;
+    });
+
+    window.addEventListener('wheel', (e) => {
+      const zoomFactor = e.deltaY < 0 ? 1.08 : 1 / 1.08;
+      const prevZoom = state.zoom;
+      const nextZoom = clamp(prevZoom * zoomFactor, 0.4, 4.5);
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const wx = (mx - centerX) / prevZoom - state.offsetX;
+      const wy = (my - centerY) / prevZoom - state.offsetY;
+      state.zoom = nextZoom;
+      state.offsetX = (mx - centerX) / nextZoom - wx;
+      state.offsetY = (my - centerY) / nextZoom - wy;
+    }, { passive: true });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Shift') state.motionSlow = true;
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const inspector = document.querySelector('aside');
+        inspector.classList.toggle('hidden');
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      if (e.key === 'Shift') state.motionSlow = false;
+    });
+
+    // ====== Particle System ======
+    class Particle {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        const angle = rand(0, Math.PI * 2);
+        const speed = rand(0.1, 0.9) * (1 + state.chaos);
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.life = rand(0.5, 1.5);
+        this.age = 0;
+        this.size = rand(1, 3.2);
+        this.hue = rand(180, 320);
+        this.trail = [];
+      }
+      step(dt, cx, cy) {
+        const dx = this.x - cx;
+        const dy = this.y - cy;
+        const distSq = dx * dx + dy * dy + 0.001;
+        const gravity = 6 / distSq;
+        const gAngle = Math.atan2(dy, dx) + Math.PI / 2;
+        this.vx += Math.cos(gAngle) * gravity * dt * (0.7 + state.chaos * 1.3);
+        this.vy += Math.sin(gAngle) * gravity * dt * (0.7 + state.chaos * 1.3);
+
+        const drag = 0.98 - state.chaos * 0.3;
+        this.vx *= drag;
+        this.vy *= drag;
+
+        this.x += this.vx * dt * 60;
+        this.y += this.vy * dt * 60;
+
+        this.age += dt;
+        this.trail.push({ x: this.x, y: this.y });
+        if (this.trail.length > 12) this.trail.shift();
+      }
+      get alive() {
+        return this.age < this.life * (2.2 + state.chaos);
+      }
+    }
+
+    function seedCluster(px, py) {
+      const cx = (px - centerX) / state.zoom - state.offsetX;
+      const cy = (py - centerY) / state.zoom - state.offsetY;
+      const count = Math.floor(20 + state.chaos * 80);
+      for (let i = 0; i < count; i++) {
+        const angle = rand(0, Math.PI * 2);
+        const radius = rand(0, 140 * (0.6 + state.chaos));
+        const x = cx + Math.cos(angle) * radius;
+        const y = cy + Math.sin(angle) * radius;
+        state.particles.push(new Particle(x, y));
+      }
+      if (state.particles.length > state.maxParticles) {
+        state.particles.splice(0, state.particles.length - state.maxParticles);
+      }
+      setConsole(`Seeded ${count} particles at (${Math.round(cx)}, ${Math.round(cy)})`);
+    }
+
+    function resetParticles() {
+      state.particles.length = 0;
+      const rings = 4;
+      for (let r = 1; r <= rings; r++) {
+        const radius = r * 70;
+        const count = 40 + r * 18;
+        for (let i = 0; i < count; i++) {
+          const angle = (i / count) * Math.PI * 2;
+          const x = Math.cos(angle) * radius;
+          const y = Math.sin(angle) * radius;
+          const p = new Particle(x, y);
+          const tangential = 0.55 + r * 0.18;
+          p.vx = -Math.sin(angle) * tangential;
+          p.vy = Math.cos(angle) * tangential;
+          p.size = 1.4 + r * 0.4;
+          p.hue = 180 + r * 25 + rand(-10, 10);
+          state.particles.push(p);
+        }
+      }
+      if (state.particles.length > state.maxParticles) {
+        state.particles.length = state.maxParticles;
+      }
+      setConsole('Universe reset to balanced orbital field.');
+    }
+
+    // ====== Modes Rendering ======
+    function renderOrbits(dt) {
+      const cx = 0 + state.offsetX;
+      const cy = 0 + state.offsetY;
+
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.scale(state.zoom, state.zoom);
+
+      // central energy core
+      const coreRadius = 32 + Math.sin(state.time * 1.5) * 6;
+      const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreRadius * 2.4);
+      gradient.addColorStop(0, 'rgba(56,189,248,0.8)');
+      gradient.addColorStop(0.4, 'rgba(129,140,248,0.7)');
+      gradient.addColorStop(1, 'rgba(15,23,42,0)');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(cx, cy, coreRadius * 2.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.lineWidth = 0.5;
+      for (const p of state.particles) {
+        const alpha = 1 - p.age / (p.life * (2.2 + state.chaos));
+        const hue = p.hue + Math.sin(state.time * 2 + p.x * 0.01) * 15;
+
+        // trail
+        if (p.trail.length > 1) {
+          ctx.beginPath();
+          for (let i = 0; i < p.trail.length; i++) {
+            const t = p.trail[i];
+            const trailAlpha = (i / p.trail.length) * 0.6 * alpha;
+            ctx.strokeStyle = `hsla(${hue}, 85%, ${55 + i * 2}%, ${trailAlpha})`;
+            if (i === 0) ctx.moveTo(t.x + cx, t.y + cy);
+            else ctx.lineTo(t.x + cx, t.y + cy);
+          }
+          ctx.stroke();
+        }
+
+        // particle
+        const size = p.size * (0.7 + state.chaos * 0.7);
+        const glow = ctx.createRadialGradient(p.x + cx, p.y + cy, 0, p.x + cx, p.y + cy, size * 4);
+        glow.addColorStop(0, `hsla(${hue}, 95%, 70%, ${0.9 * alpha})`);
+        glow.addColorStop(1, `hsla(${hue}, 80%, 50%, 0)`);
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(p.x + cx, p.y + cy, size * 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = `hsla(${hue}, 100%, 90%, ${0.9 * alpha})`;
+        ctx.beginPath();
+        ctx.arc(p.x + cx, p.y + cy, size * 0.7, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
+    function renderWaves(dt, energyBoost = 1) {
+      const t = state.time * 0.6;
+      const rows = 32;
+      const cols = 42;
+
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.scale(state.zoom, state.zoom);
+      ctx.translate(state.offsetX, state.offsetY);
+
+      const cellW = 32;
+      const cellH = 24;
+      for (let y = -rows / 2; y < rows / 2; y++) {
+        for (let x = -cols / 2; x < cols / 2; x++) {
+          const nx = x / cols;
+          const ny = y / rows;
+          const d = Math.sqrt(nx * nx + ny * ny);
+          const angle = Math.atan2(ny, nx);
+          const wave = Math.sin(d * 14 - t * 8 + angle * 4);
+          const amp = (1 - d * 1.2) * 14 * energyBoost;
+          if (amp <= 0) continue;
+          const h = wave * amp;
+
+          const px = x * cellW + h * 0.6;
+          const py = y * cellH + h;
+          const hue = 190 + wave * 40 + d * 80;
+          const light = 45 + wave * 15;
+          const alpha = clamp((1 - d * 1.4) * 1.4, 0, 1) * (0.3 + state.chaos * 0.7);
+
+          ctx.fillStyle = `hsla(${hue}, 90%, ${light}%, ${alpha})`;
+          const size = 3.2 + amp * 0.08;
+          ctx.beginPath();
+          ctx.roundRect(px - size / 2, py - size / 2, size, size, 999);
+          ctx.fill();
+        }
+      }
+
+      ctx.restore();
+    }
+
+    function renderConstellations(dt) {
+      const cx = state.offsetX;
+      const cy = state.offsetY;
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.scale(state.zoom, state.zoom);
+      ctx.translate(cx, cy);
+
+      const nodes = [];
+      for (const p of state.particles) {
+        const alpha = 1 - p.age / (p.life * (2.2 + state.chaos));
+        if (alpha < 0.1) continue;
+        nodes.push({ x: p.x, y: p.y, hue: p.hue, alpha });
+      }
+
+      // connect nearby nodes
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const a = nodes[i];
+          const b = nodes[j];
+          const dx = a.x - b.x;
+          const dy = a.y - b.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const maxDist = 160 + state.chaos * 140;
+          if (dist > maxDist) continue;
+          const t = 1 - dist / maxDist;
+          const width = 0.5 + t * 1.5;
+          const alpha = (a.alpha + b.alpha) * 0.25 * (0.5 + state.chaos * 0.7);
+          const hue = (a.hue + b.hue) / 2;
+          ctx.strokeStyle = `hsla(${hue}, 90%, 70%, ${alpha})`;
+          ctx.lineWidth = width;
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+      }
+
+      // draw nodes
+      for (const n of nodes) {
+        const r = 1.2 + n.alpha * 2.2;
+        ctx.fillStyle = `hsla(${n.hue}, 95%, 90%, ${n.alpha})`;
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
+    // ====== Audio Reactive (optional, best-effort) ======
+    let audioCtx = null;
+    let analyser = null;
+    let audioData = null;
+    let audioEnabled = false;
+
+    async function toggleAudio() {
+      const dot = document.getElementById('audioDot');
+      if (audioEnabled) {
+        audioEnabled = false;
+        dot.style.backgroundColor = '#64748b';
+        setConsole('Audio reactive mode disabled.');
+        return;
+      }
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const source = audioCtx.createMediaStreamSource(stream);
+          analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 256;
+          audioData = new Uint8Array(analyser.frequencyBinCount);
+          source.connect(analyser);
+        } else if (audioCtx.state === 'suspended') {
+          await audioCtx.resume();
+        }
+        audioEnabled = true;
+        dot.style.backgroundColor = '#22c55e';
+        setConsole('Audio reactive mode enabled. Your microphone powers the wavefield.');
+      } catch (err) {
+        console.error(err);
+        setConsole('Audio access denied or unavailable.');
+      }
+    }
+
+    function getAudioEnergy() {
+      if (!audioEnabled || !analyser || !audioData) return 0;
+      analyser.getByteFrequencyData(audioData);
+      let sum = 0;
+      for (let i = 0; i < audioData.length; i++) sum += audioData[i];
+      const avg = sum / audioData.length / 255; // 0-1
+      return avg;
+    }
+
+    // ====== UI Wiring ======
+    const consoleEl = document.getElementById('consoleText');
+    const hudMode = document.getElementById('hudMode');
+    const hudFPS = document.getElementById('hudFPS');
+    const hudParticles = document.getElementById('hudParticles');
+    const infoZoom = document.getElementById('infoZoom');
+    const infoEnergy = document.getElementById('infoEnergy');
+    const infoMode = document.getElementById('infoMode');
+    const infoPreset = document.getElementById('infoPreset');
+
+    function setConsole(msg) {
+      consoleEl.textContent = msg;
+    }
+
+    // Mode buttons
+    document.querySelectorAll('.panel-nav button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const mode = btn.dataset.mode;
+        if (!mode) return;
+        state.mode = mode;
+        document.querySelectorAll('.panel-nav button').forEach(b => b.dataset.active = 'false');
+        btn.dataset.active = 'true';
+        let label;
+        if (mode === 'orbits') label = 'ORBITAL PARTICLE FIELD';
+        else if (mode === 'waves') label = 'AUDIO-REACTIVE WAVEFIELD';
+        else label = 'GENERATIVE CONSTELLATIONS';
+        hudMode.textContent = label;
+        infoMode.textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+        setConsole(`Switched to ${label.toLowerCase()}.`);
+      });
+    });
+
+    // Range controls
+    const rangeCount = document.getElementById('rangeCount');
+    const labelCount = document.getElementById('labelCount');
+    const rangeChaos = document.getElementById('rangeChaos');
+    const labelChaos = document.getElementById('labelChaos');
+
+    rangeCount.addEventListener('input', () => {
+      state.maxParticles = parseInt(rangeCount.value, 10) || 600;
+      labelCount.textContent = state.maxParticles;
+      if (state.particles.length > state.maxParticles) {
+        state.particles.length = state.maxParticles;
+      }
+    });
+
+    rangeChaos.addEventListener('input', () => {
+      state.chaos = parseFloat(rangeChaos.value);
+      labelChaos.textContent = state.chaos.toFixed(2);
+    });
+
+    // Theme toggle (simple: adjust body background & accent)
+    const themeToggle = document.getElementById('themeToggle');
+    let darkTheme = true;
+    themeToggle.addEventListener('click', () => {
+      darkTheme = !darkTheme;
+      if (darkTheme) {
+        document.body.style.background = 'radial-gradient(circle at 10% 20%, #050816 0, #020617 40%, #000 100%)';
+        themeToggle.textContent = '☾';
+        setConsole('Switched to deep space theme.');
+      } else {
+        document.body.style.background = 'radial-gradient(circle at 10% 20%, #0f172a 0, #020617 35%, #020617 100%)';
+        themeToggle.textContent = '☼';
+        setConsole('Switched to aurora horizon theme.');
+      }
+    });
+
+    // Buttons
+    document.getElementById('btnReset').addEventListener('click', () => {
+      state.offsetX = 0;
+      state.offsetY = 0;
+      state.zoom = 1;
+      resetParticles();
+    });
+
+    document.getElementById('btnAudio').addEventListener('click', toggleAudio);
+
+    // Snapshot (download canvas)
+    document.getElementById('btnSnapshot').addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.href = canvas.toDataURL('image/png');
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      link.download = `neon-cosmos-${ts}.png`;
+      link.click();
+      setConsole('Snapshot captured as PNG.');
+    });
+
+    // Presets
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const preset = btn.dataset.preset;
+        applyPreset(preset);
+      });
+    });
+
+    function applyPreset(name) {
+      if (name === 'nebula') {
+        state.mode = 'orbits';
+        state.chaos = 0.78;
+        rangeChaos.value = state.chaos;
+        labelChaos.textContent = state.chaos.toFixed(2);
+        state.maxParticles = 900;
+        rangeCount.value = 900;
+        labelCount.textContent = '900';
+        resetParticles();
+        for (let i = 0; i < 12; i++) {
+          seedCluster(centerX + rand(-220, 220), centerY + rand(-140, 140));
+        }
+        setConsole('Preset: Neon Nebula — dense, swirling color clouds.');
+      } else if (name === 'grid') {
+        state.mode = 'waves';
+        state.chaos = 0.35;
+        rangeChaos.value = state.chaos;
+        labelChaos.textContent = state.chaos.toFixed(2);
+        state.maxParticles = 420;
+        rangeCount.value = 420;
+        labelCount.textContent = '420';
+        state.particles.length = 0;
+        const cols = 26, rows = 20, spacing = 40;
+        for (let y = 0; y < rows; y++) {
+          for (let x = 0; x < cols; x++) {
+            const px = (x - cols / 2) * spacing;
+            const py = (y - rows / 2) * spacing;
+            const p = new Particle(px, py);
+            p.vx = p.vy = 0;
+            p.life = 9999;
+            p.size = 1.4;
+            p.hue = 180 + ((x / cols) * 120);
+            state.particles.push(p);
+          }
+        }
+        setConsole('Preset: Quantum Grid — ordered, pulsating lattice.');
+      } else if (name === 'storm') {
+        state.mode = 'orbits';
+        state.chaos = 0.96;
+        rangeChaos.value = state.chaos;
+        labelChaos.textContent = state.chaos.toFixed(2);
+        state.maxParticles = 1100;
+        rangeCount.value = 1100;
+        labelCount.textContent = '1100';
+        state.particles.length = 0;
+        for (let i = 0; i < 16; i++) {
+          seedCluster(centerX + rand(-80, 80), centerY + rand(-80, 80));
+        }
+        setConsole('Preset: Solar Storm — high-energy particle surge.');
+      }
+      state.preset = name.charAt(0).toUpperCase() + name.slice(1);
+      infoPreset.textContent = state.preset;
+      document.querySelectorAll('.panel-nav button').forEach(b => {
+        b.dataset.active = (b.dataset.mode === state.mode).toString();
+      });
+      let label;
+      if (state.mode === 'orbits') label = 'ORBITAL PARTICLE FIELD';
+      else if (state.mode === 'waves') label = 'AUDIO-REACTIVE WAVEFIELD';
+      else label = 'GENERATIVE CONSTELLATIONS';
+      hudMode.textContent = label;
+      infoMode.textContent = state.mode.charAt(0).toUpperCase() + state.mode.slice(1);
+    }
+
+    // Auto tour: cycles through presets & modes
+    let tourRunning = false;
+    let tourHandle = null;
+    document.getElementById('btnTour').addEventListener('click', () => {
+      tourRunning = !tourRunning;
+      const btn = document.getElementById('btnTour');
+      if (tourRunning) {
+        setConsole('Auto tour engaged. Sit back and watch the universe remix itself.');
+        let step = 0;
+        const runStep = () => {
+          if (!tourRunning) return;
+          step++;
+          if (step % 3 === 1) applyPreset('nebula');
+          else if (step % 3 === 2) applyPreset('grid');
+          else applyPreset('storm');
+          const delay = 9000 + Math.random() * 4000;
+          tourHandle = setTimeout(runStep, delay);
+        };
+        runStep();
+      } else {
+        if (tourHandle) clearTimeout(tourHandle);
+        setConsole('Auto tour disengaged. You are now in manual control.');
+      }
+    });
+
+    // ====== Main Loop ======
+    function loop(now) {
+      requestAnimationFrame(loop);
+      const dtRaw = (now - state.lastFrameTime) / 1000;
+      state.lastFrameTime = now;
+      const dt = clamp(dtRaw, 0, 0.05) * (state.motionSlow ? 0.25 : 1);
+      state.time += dt;
+
+      // FPS (simple EMA)
+      const fps = 1 / (dtRaw || 1e-6);
+      state.fps = lerp(state.fps, fps, 0.15);
+
+      // background fade
+      ctx.fillStyle = 'rgba(2,6,23,0.55)';
+      ctx.fillRect(0, 0, width, height);
+
+      // update particles
+      const cx = 0;
+      const cy = 0;
+      for (let i = state.particles.length - 1; i >= 0; i--) {
+        const p = state.particles[i];
+        p.step(dt, cx, cy);
+        if (!p.alive) state.particles.splice(i, 1);
+      }
+
+      const audioEnergy = getAudioEnergy();
+
+      if (state.mode === 'orbits') renderOrbits(dt);
+      else if (state.mode === 'waves') renderWaves(dt, 1 + audioEnergy * 5);
+      else renderConstellations(dt);
+
+      hudFPS.textContent = 'FPS: ' + Math.round(state.fps).toString().padStart(2, '0');
+      hudParticles.textContent = 'Particles: ' + state.particles.length;
+      infoZoom.textContent = state.zoom.toFixed(2) + 'x';
+      infoEnergy.textContent = audioEnergy.toFixed(2);
+    }
+
+    resetParticles();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
