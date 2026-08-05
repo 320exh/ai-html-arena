@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Experience Hub</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff;
+        }
+
+        /* Animated background */
+        .animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.1;
+            animation: float 8s ease-in-out infinite;
+        }
+
+        .blob-1 {
+            width: 200px;
+            height: 200px;
+            background: #00d4ff;
+            top: 20%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .blob-2 {
+            width: 300px;
+            height: 300px;
+            background: #ff006e;
+            top: 60%;
+            right: 10%;
+            animation-delay: 2s;
+        }
+
+        .blob-3 {
+            width: 250px;
+            height: 250px;
+            background: #00f5ff;
+            bottom: 20%;
+            left: 50%;
+            animation-delay: 4s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0); }
+            25% { transform: translate(20px, -20px); }
+            50% { transform: translate(-20px, 20px); }
+            75% { transform: translate(-20px, -20px); }
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            background: rgba(15, 12, 41, 0.8);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1rem 2rem;
+        }
+
+        nav ul {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        nav button {
+            background: none;
+            border: none;
+            color: #00d4ff;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            padding: 0.5rem 1rem;
+        }
+
+        nav button:hover {
+            color: #00f5ff;
+            transform: scale(1.1);
+        }
+
+        nav button.active {
+            color: #ff006e;
+        }
+
+        /* Sections */
+        .section {
+            display: none;
+            min-height: 100vh;
+            padding-top: 80px;
+            opacity: 0;
+            animation: fadeIn 0.8s ease-in-out forwards;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Hero Section */
+        .hero {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .hero h1 {
+            font-size: 5rem;
+            font-weight: 900;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #00d4ff, #00f5ff, #ff006e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: slideDown 0.8s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hero p {
+            font-size: 1.5rem;
+            color: #a0aec0;
+            margin-bottom: 2rem;
+            animation: slideUp 0.8s ease-out 0.2s backwards;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.75rem 2rem;
+            border: 2px solid;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            border-color: #00d4ff;
+            color: #00d4ff;
+            background: transparent;
+        }
+
+        .btn-primary:hover {
+            background: #00d4ff;
+            color: #0f0c29;
+            box-shadow: 0 0 20px #00d4ff;
+            transform: scale(1.05);
+        }
+
+        .btn-secondary {
+            border-color: #ff006e;
+            color: #ff006e;
+            background: transparent;
+        }
+
+        .btn-secondary:hover {
+            background: #ff006e;
+            color: #fff;
+            box-shadow: 0 0 20px #ff006e;
+            transform: scale(1.05);
+        }
+
+        /* Cards Grid */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(255, 0, 110, 0.1));
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transform: rotate(45deg);
+            animation: shine 3s infinite;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+
+        .card:hover {
+            border-color: #00d4ff;
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.4);
+            transform: translateY(-10px);
+        }
+
+        .card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #00f5ff;
+            position: relative;
+            z-index: 1;
+        }
+
+        .card p {
+            color: #a0aec0;
+            line-height: 1.6;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Interactive Elements */
+        .interactive {
+            padding: 4rem 2rem;
+        }
+
+        .spectrum-generator {
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .spectrum-generator h2 {
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            color: #00d4ff;
+        }
+
+        .color-preview {
+            width: 200px;
+            height: 200px;
+            border-radius: 15px;
+            margin: 2rem auto;
+            border: 3px solid #00d4ff;
+            box-shadow: 0 0 30px currentColor;
+            transition: all 0.3s ease;
+        }
+
+        .slider-group {
+            margin: 2rem 0;
+            text-align: left;
+        }
+
+        .slider-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #00d4ff;
+            font-weight: 600;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(0, 212, 255, 0.3);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #00d4ff;
+            cursor: pointer;
+            box-shadow: 0 0 10px #00d4ff;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #00d4ff;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px #00d4ff;
+        }
+
+        /* Particle Canvas */
+        #particleCanvas {
+            display: block;
+            margin: 0 auto;
+            background: rgba(15, 12, 41, 0.5);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 15px;
+        }
+
+        /* Matrix Rain */
+        .matrix-container {
+            position: relative;
+            height: 400px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 2rem auto;
+            max-width: 800px;
+        }
+
+        .matrix-text {
+            position: absolute;
+            font-family: 'Courier New', monospace;
+            color: #00ff00;
+            font-size: 1.2rem;
+            text-shadow: 0 0 10px #00ff00;
+            opacity: 0.8;
+        }
+
+        /* 3D Cube */
+        .cube-container {
+            perspective: 1000px;
+            max-width: 400px;
+            margin: 2rem auto;
+        }
+
+        .cube {
+            width: 200px;
+            height: 200px;
+            position: relative;
+            transform-style: preserve-3d;
+            animation: rotateCube 10s infinite linear;
+        }
+
+        .cube-face {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            border: 2px solid #00d4ff;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(255, 0, 110, 0.2));
+            opacity: 0.8;
+            box-shadow: inset 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+
+        .face-front { transform: translateZ(100px); }
+        .face-back { transform: rotateY(180deg) translateZ(100px); }
+        .face-right { transform: rotateY(90deg) translateZ(100px); }
+        .face-left { transform: rotateY(-90deg) translateZ(100px); }
+        .face-top { transform: rotateX(90deg) translateZ(100px); }
+        .face-bottom { transform: rotateX(-90deg) translateZ(100px); }
+
+        @keyframes rotateCube {
+            from { transform: rotateX(0) rotateY(0); }
+            to { transform: rotateX(360deg) rotateY(360deg); }
+        }
+
+        /* Typing Effect */
+        .typing-demo {
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: rgba(0, 212, 255, 0.1);
+            border: 2px solid #00d4ff;
+            border-radius: 15px;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .typing {
+            border-right: 3px solid #00d4ff;
+            animation: typing 3s steps(40, end), blink-caret .75s step-end infinite;
+            overflow: hidden;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 1.2rem;
+        }
+
+        @keyframes typing {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+
+        @keyframes blink-caret {
+            from, to { border-color: transparent; }
+            50% { border-color: #00d4ff; }
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: #a0aec0;
+            margin-top: 4rem;
+        }
+
+        /* Scroll indicators */
+        .scroll-indicator {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(10px); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 3rem;
+            }
+
+            .hero p {
+                font-size: 1.2rem;
+            }
+
+            nav ul {
+                gap: 1rem;
+            }
+
+            nav button {
+                font-size: 0.9rem;
+                padding: 0.3rem 0.7rem;
+            }
+
+            .cards-grid {
+                grid-template-columns: 1fr;
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav>
+        <ul>
+            <li><button class="nav-btn active" data-section="home">Home</button></li>
+            <li><button class="nav-btn" data-section="gallery">Gallery</button></li>
+            <li><button class="nav-btn" data-section="interactive">Interactive</button></li>
+            <li><button class="nav-btn" data-section="effects">Effects</button></li>
+            <li><button class="nav-btn" data-section="about">About</button></li>
+        </ul>
+    </nav>
+
+    <!-- Home Section -->
+    <section class="section active" id="home">
+        <div class="hero">
+            <h1>Welcome to the Future</h1>
+            <p>An interactive experience like no other</p>
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <button class="btn btn-primary nav-btn" data-section="gallery">Explore Gallery</button>
+                <button class="btn btn-secondary nav-btn" data-section="interactive">Try Interactive</button>
+            </div>
+            <div class="scroll-indicator">
+                <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M15 20L8 13M15 20L22 13M15 20V2" stroke="#00d4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+        </div>
+    </section>
+
+    <!-- Gallery Section -->
+    <section class="section" id="gallery">
+        <div style="padding: 4rem 2rem; max-width: 1200px; margin: 0 auto;">
+            <h2 style="text-align: center; font-size: 3rem; margin-bottom: 3rem; color: #00f5ff;">Featured Collections</h2>
+            <div class="cards-grid">
+                <div class="card">
+                    <h3>✨ Neon Dreams</h3>
+                    <p>Immerse yourself in vibrant neon colors and futuristic aesthetics that push the boundaries of digital design.</p>
+                </div>
+                <div class="card">
+                    <h3>🌊 Liquid Motion</h3>
+                    <p>Experience smooth, flowing animations that mimic natural liquid behavior with cutting-edge CSS and JavaScript.</p>
+                </div>
+                <div class="card">
+                    <h3>🎯 Precision Tech</h3>
+                    <p>Meticulously crafted interactive elements that respond to your every move with pixel-perfect accuracy.</p>
+                </div>
+                <div class="card">
+                    <h3>🚀 Performance</h3>
+                    <p>Lightning-fast interactions and animations that deliver a buttery smooth experience on any device.</p>
+                </div>
+                <div class="card">
+                    <h3>🎨 Creative Freedom</h3>
+                    <p>Unlimited possibilities for customization and personalization to match your unique style and vision.</p>
+                </div>
+                <div class="card">
+                    <h3>💫 Innovation Hub</h3>
+                    <p>Cutting-edge technologies and creative ideas combined to create something truly extraordinary.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Interactive Section -->
+    <section class="section" id="interactive">
+        <div style="padding: 4rem 2rem;">
+            <h2 style="text-align: center; font-size: 3rem; margin-bottom: 2rem; color: #00f5ff;">Interactive Color Generator</h2>
+            <div class="spectrum-generator">
+                <div class="color-preview" id="colorPreview"></div>
+                <div class="slider-group">
+                    <label>Red: <span id="redValue">128</span></label>
+                    <input type="range" id="redSlider" min="0" max="255" value="128">
+                </div>
+                <div class="slider-group">
+                    <label>Green: <span id="greenValue">212</span></label>
+                    <input type="range" id="greenSlider" min="0" max="255" value="212">
+                </div>
+                <div class="slider-group">
+                    <label>Blue: <span id="blueValue">255</span></label>
+                    <input type="range" id="blueSlider" min="0" max="255" value="255">
+                </div>
+                <div style="margin-top: 2rem; padding: 1.5rem; background: rgba(0, 212, 255, 0.1); border-radius: 10px; border: 1px solid #00d4ff;">
+                    <p style="color: #a0aec0;">RGB: (<span id="rgbValue">128, 212, 255</span>)</p>
+                    <p style="color: #a0aec0; margin-top: 0.5rem;">HEX: <span id="hexValue" style="color: #00d4ff; font-weight: bold;">#80d4ff</span></p>
+                </div>
+                <button class="btn btn-primary" style="margin-top: 2rem; width: 100%;" onclick="randomizeColor()">Randomize Color</button>
+            </div>
+
+            <h2 style="text-align: center; font-size: 2.5rem; margin-top: 4rem; color: #00f5ff;">Particle Animation</h2>
+            <canvas id="particleCanvas" width="800" height="400" style="max-width: 100%; margin: 2rem auto; display: block;"></canvas>
+
+            <h2 style="text-align: center; font-size: 2.5rem; margin-top: 4rem; color: #00f5ff;">Matrix Rain Effect</h2>
+            <div class="matrix-container" id="matrixContainer"></div>
+
+            <h2 style="text-align: center; font-size: 2.5rem; margin-top: 4rem; color: #00f5ff;">3D Rotating Cube</h2>
+            <div class="cube-container">
+                <div class="cube">
+                    <div class="cube-face face-front">Front</div>
+                    <div class="cube-face face-back">Back</div>
+                    <div class="cube-face face-right">Right</div>
+                    <div class="cube-face face-left">Left</div>
+                    <div class="cube-face face-top">Top</div>
+                    <div class="cube-face face-bottom">Bottom</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Effects Section -->
+    <section class="section" id="effects">
+        <div style="padding: 4rem 2rem;">
+            <h2 style="text-align: center; font-size: 3rem; margin-bottom: 3rem; color: #00f5ff;">Text Effects</h2>
+            <div class="typing-demo">
+                <div class="typing" id="typingEffect"></div>
+            </div>
+
+            <div style="max-width: 800px; margin: 4rem auto; text-align: center;">
+                <h3 style="color: #00d4ff; font-size: 1.5rem; margin-bottom: 2rem;">Hover Over Cards Below</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+                    <div class="card" style="height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">🎭</div>
+                        <h4 style="color: #00f5ff;">Creative</h4>
+                        <p style="font-size: 0.9rem; margin-top: 0.5rem;">Design with flair</p>
+                    </div>
+                    <div class="card" style="height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">⚡</div>
+                        <h4 style="color: #00f5ff;">Dynamic</h4>
+                        <p style="font-size: 0.9rem; margin-top: 0.5rem;">Live interactions</p>
+                    </div>
+                    <div class="card" style="height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">🌟</div>
+                        <h4 style="color: #00f5ff;">Polished</h4>
+                        <p style="font-size: 0.9rem; margin-top: 0.5rem;">Premium quality</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section class="section" id="about">
+        <div style="padding: 4rem 2rem; max-width: 800px; margin: 0 auto;">
+            <h2 style="font-size: 3rem; margin-bottom: 2rem; color: #00f5ff; text-align: center;">About This Experience</h2>
+            <div class="card" style="margin-bottom: 2rem;">
+                <h3>🎨 Design Philosophy</h3>
+                <p style="color: #a0aec0; line-height: 1.8;">This project showcases modern web technologies including CSS animations, Canvas API, and interactive JavaScript. Every element is carefully crafted to provide a smooth, delightful user experience.</p>
+            </div>
+            <div class="card" style="margin-bottom: 2rem;">
+                <h3>💻 Technologies Used</h3>
+                <p style="color: #a0aec0; line-height: 1.8;">HTML5, CSS3 with advanced animations and 3D transforms, vanilla JavaScript, Canvas API for particle effects, and modern web standards. All in a single, optimized HTML file.</p>
+            </div>
+            <div class="card" style="margin-bottom: 2rem;">
+                <h3>✨ Features Included</h3>
+                <p style="color: #a0aec0; line-height: 1.8;">Smooth page transitions, interactive color generator, particle animations, matrix rain effect, 3D cube rotation, typing effects, responsive design, and much more. Everything is self-contained and ready to use.</p>
+            </div>
+            <div style="text-align: center; margin-top: 3rem;">
+                <button class="btn btn-primary" onclick="document.querySelector('nav button').click()">Back to Home</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <p>© 2024 Interactive Experience Hub. Created with passion for the web.</p>
+        <p style="margin-top: 1rem; font-size: 0.9rem;">Scroll • Explore • Interact • Enjoy</p>
+    </footer>
+
+    <script>
+        // Navigation
+        const navButtons = document.querySelectorAll('.nav-btn');
+        const sections = document.querySelectorAll('.section');
+
+        navButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                const targetSection = e.target.dataset.section;
+                
+                // Update active states
+                navButtons.forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                
+                // Hide all sections
+                sections.forEach(section => section.classList.remove('active'));
+                
+                // Show target section
+                document.getElementById(targetSection).classList.add('active');
+                
+                // Scroll to top
+                window.scrollTo(0, 0);
+            });
+        });
+
+        // Color Generator
+        const redSlider = document.getElementById('redSlider');
+        const greenSlider = document.getElementById('greenSlider');
+        const blueSlider = document.getElementById('blueSlider');
+        const colorPreview = document.getElementById('colorPreview');
+
+        function updateColor() {
+            const r = parseInt(redSlider.value);
+            const g = parseInt(greenSlider.value);
+            const b = parseInt(blueSlider.value);
+            
+            const rgbColor = `rgb(${r}, ${g}, ${b})`;
+            const hexColor = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+            
+            colorPreview.style.backgroundColor = rgbColor;
+            colorPreview.style.boxShadow = `0 0 30px ${rgbColor}`;
+            
+            document.getElementById('redValue').textContent = r;
+            document.getElementById('greenValue').textContent = g;
+            document.getElementById('blueValue').textContent = b;
+            document.getElementById('rgbValue').textContent = `${r}, ${g}, ${b}`;
+            document.getElementById('hexValue').textContent = hexColor;
+        }
+
+        function randomizeColor() {
+            redSlider.value = Math.floor(Math.random() * 256);
+            greenSlider.value = Math.floor(Math.random() * 256);
+            blueSlider.value = Math.floor(Math.random() * 256);
+            updateColor();
+        }
+
+        redSlider.addEventListener('input', updateColor);
+        greenSlider.addEventListener('input', updateColor);
+        blueSlider.addEventListener('input', updateColor);
+        updateColor();
+
+        // Particle Animation
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        if (window.devicePixelRatio > 1) {
+            canvas.width *= window.devicePixelRatio;
+            canvas.height *= window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 1;
+                this.speedX = Math.random() * 2 - 1;
+                this.speedY = Math.random() * 2 - 1;
+                this.color = ['#00d4ff', '#ff006e', '#00f5ff'][Math.floor(Math.random() * 3)];
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        const particles = Array.from({ length: 100 }, () => new Particle());
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            particles.forEach(particle => {
+                particle.update();
+                particle.draw();
+            });
+
+            particles.forEach((p1, i) => {
+                particles.slice(i + 1).forEach(p2 => {
+                    const dx = p1.x - p2.x;
+                    const dy = p1.y - p2.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < 100) {
+                        ctx.strokeStyle = `rgba(0, 212, 255, ${0.2 * (1 - distance / 100)})`;
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.stroke();
+                    }
+                });
+            });
+
+            requestAnimationFrame(animateParticles);
+        }
+
+        animateParticles();
+
+        // Matrix Rain Effect
+        const matrixContainer = document.getElementById('matrixContainer');
+        const matrixChars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+
+        function createMatrixRain() {
+            matrixContainer.innerHTML = '';
+            const containerWidth = matrixContainer.offsetWidth;
+            const containerHeight = matrixContainer.offsetHeight;
+            
+            for (let i = 0; i < 20; i++) {
+                const text = document.createElement('div');
+                text.className = 'matrix-text';
+                text.textContent = matrixChars.charAt(Math.floor(Math.random() * matrixChars.length));
+                text.style.left = Math.random() * containerWidth + 'px';
+                text.style.top = Math.random() * containerHeight + 'px';
+                text.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                
+                matrixContainer.appendChild(text);
+
+                const keyframes = `
+                    @keyframes matrix-${i} {
+                        0% { transform: translateY(0); opacity: 1; }
+                        100% { transform: translateY(${containerHeight}px); opacity: 0; }
+                    }
+                `;
+                
+                const style = document.createElement('style');
+                style.textContent = keyframes + `
+                    .matrix-text:nth-child(${i + 1}) {
+                        animation: matrix-${i} ${(Math.random() * 3 + 2)}s linear infinite;
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        }
+
+        createMatrixRain();
+        setInterval(createMatrixRain, 8000);
+
+        // Typing Effect
+        const typingTexts = [
+            'Welcome to the future of web design.',
+            'This is a single-file HTML masterpiece.',
+            'Packed with interactive features and effects.',
+            'Explore and enjoy the experience!'
+        ];
+
+        let currentText = 0;
+        const typingElement = document.getElementById('typingEffect');
+
+        function typeText(text, index = 0) {
+            if (index < text.length) {
+                typingElement.textContent += text[index];
+                setTimeout(() => typeText(text, index + 1), 50);
+            } else {
+                setTimeout(() => {
+                    typingElement.textContent = '';
+                    currentText = (currentText + 1) % typingTexts.length;
+                    typeText(typingTexts[currentText]);
+                }, 3000);
+            }
+        }
+
+        typeText(typingTexts[0]);
+
+        // Smooth scroll
+        document.documentElement.style.scrollBehavior = 'smooth';
+    </script>
+</body>
+</html>
