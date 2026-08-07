@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmic Particle Universe</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050505;
+            font-family: 'Inter', sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        input[type=range] {
+            accent-color: #6366f1;
+        }
+        .hud-text {
+            text-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        /* Hide scrollbar for IE, Edge and Firefox */
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="canvas"></canvas>
+
+    <!-- HUD Overlay -->
+    <div id="ui" class="fixed top-0 left-0 w-full h-full pointer-events-none select-none">
+        
+        <!-- Header -->
+        <div class="absolute top-6 left-6 pointer-events-auto">
+            <h1 class="text-white text-2xl font-light tracking-widest uppercase opacity-80">Cosmic Universe</h1>
+            <p class="text-indigo-400 text-xs tracking-tighter uppercase opacity-60">Generative Particle Engine v1.0</p>
+        </div>
+
+        <!-- Controls Panel -->
+        <div class="absolute top-6 right-6 w-72 glass rounded-2xl p-6 pointer-events-auto text-white text-sm no-scrollbar overflow-y-auto max-h-[calc(100vh-100px)] transition-transform duration-500 transform translate-x-0" id="controls-panel">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="font-semibold tracking-wide">Universal Laws</h2>
+                <button id="toggle-ui" class="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded transition">Hide</button>
+            </div>
+
+            <!-- Mode Selection -->
+            <div class="mb-6">
+                <label class="block text-xs uppercase text-white/40 mb-2">Interaction Mode</label>
+                <div class="grid grid-cols-2 gap-2" id="mode-selector">
+                    <button data-mode="gravity" class="mode-btn bg-indigo-600/40 border border-indigo-500/50 py-2 rounded text-xs">Gravity</button>
+                    <button data-mode="repel" class="mode-btn bg-white/5 border border-white/10 py-2 rounded text-xs">Repel</button>
+                    <button data-mode="orbit" class="mode-btn bg-white/5 border border-white/10 py-2 rounded text-xs">Orbit</button>
+                    <button data-mode="chaos" class="mode-btn bg-white/5 border border-white/10 py-2 rounded text-xs">Chaos</button>
+                    <button data-mode="flow" class="mode-btn bg-white/5 border border-white/10 py-2 rounded text-xs col-span-2">Flow (Noise Field)</button>
+                </div>
+            </div>
+
+            <!-- Sliders -->
+            <div class="space-y-5">
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <label class="text-xs uppercase text-white/40">Density</label>
+                        <span id="val-density" class="text-xs text-indigo-400">1500</span>
+                    </div>
+                    <input type="range" id="slider-density" min="100" max="5000" step="100" value="1500" class="w-full">
+                </div>
+
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <label class="text-xs uppercase text-white/40">Speed</label>
+                        <span id="val-speed" class="text-xs text-indigo-400">1.0</span>
+                    </div>
+                    <input type="range" id="slider-speed" min="0.1" max="5.0" step="0.1" value="1.0" class="w-full">
+                </div>
+
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <label class="text-xs uppercase text-white/40">Connection</label>
+                        <span id="val-connection" class="text-xs text-indigo-400">50</span>
+                    </div>
+                    <input type="range" id="slider-connection" min="0" max="200" step="1" value="50" class="w-full">
+                </div>
+
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <label class="text-xs uppercase text-white/40">Particle Size</label>
+                        <span id="val-size" class="text-xs text-indigo-400">1.5</span>
+                    </div>
+                    <input type="range" id="slider-size" min="0.5" max="5.0" step="0.1" value="1.5" class="w-full">
+                </div>
+
+                <div>
+                    <label class="block text-xs uppercase text-white/40 mb-2">Color Palette</label>
+                    <select id="select-palette" class="w-full bg-white/5 border border-white/10 rounded py-2 px-2 text-xs outline-none">
+                        <option value="nebula">Deep Nebula (Blue/Purple)</option>
+                        <option value="supernova">Supernova (Gold/Orange)</option>
+                        <option value="void">The Void (Monochrome)</option>
+                        <option value="cyber">Cyberpunk (Cyan/Pink)</option>
+                        <option value="emerald">Emerald Dream (Green/Teal)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-8 pt-6 border-t border-white/10">
+                <button id="btn-audio" class="w-full bg-white/10 hover:bg-indigo-600/40 border border-white/10 py-3 rounded-xl text-xs uppercase tracking-widest transition-all">
+                    Initialize Audio
+                </button>
+                <p class="text-[10px] text-white/30 text-center mt-3 italic">Soundscape is procedurally generated</p>
+            </div>
+        </div>
+
+        <!-- Bottom Info -->
+        <div class="absolute bottom-6 left-6 text-white/30 text-[10px] uppercase tracking-widest pointer-events-none">
+            Click to trigger Supernova • Move to influence reality
+        </div>
+
+    </div>
+
+    <script>
+        /**
+         * COSMIC PARTICLE UNIVERSE
+         * A highly optimized generative particle system
+         */
+
+        // --- CONFIG & STATE ---
+        const config = {
+            density: 1500,
+            speed: 1.0,
+            connectionDist: 50,
+            particleSize: 1.5,
+            mode: 'gravity', // gravity, repel, orbit, chaos, flow
+            palette: 'nebula',
+            audioEnabled: false
+        };
+
+        const palettes = {
+            nebula: ['#4f46e5', '#7c3aed', '#c026d3', '#2563eb'],
+            supernova: ['#f59e0b', '#ea580c', '#dc2626', '#fde047'],
+            void: ['#ffffff', '#9ca3af', '#4b5563', '#1f2937'],
+            cyber: ['#22d3ee', '#f472b6', '#818cf8', '#c084fc'],
+            emerald: ['#10b981', '#34d399', '#059669', '#064e3b']
+        };
+
+        // --- UTILS ---
+        const lerp = (a, b, t) => a + (b - a) * t;
+        const random = (min, max) => Math.random() * (max - min) + min;
+
+        // --- CANVAS SETUP ---
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+        let width, height;
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width * window.devicePixelRatio;
+            canvas.height = height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            canvas.style.width = `${width}px`;
+            canvas.style.height = `${height}px`;
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        // --- MOUSE STATE ---
+        const mouse = {
+            x: -1000,
+            y: -1000,
+            active: false,
+            down: false
+        };
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+            mouse.active = true;
+        });
+
+        window.addEventListener('mousedown', () => {
+            mouse.down = true;
+            // Supernova trigger
+            universe.supernova(mouse.x, mouse.y);
+        });
+
+        window.addEventListener('mouseup', () => {
+            mouse.down = false;
+        });
+
+        window.addEventListener('mouseleave', () => {
+            mouse.active = false;
+        });
+
+        // --- PARTICLE CLASS ---
+        class Particle {
+            constructor() {
+                this.init();
+            }
+
+            init() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.radius = Math.random() * config.particleSize + 0.5;
+                this.color = this.getRandomColor();
+                this.life = Math.random();
+            }
+
+            getRandomColor() {
+                const colors = palettes[config.palette];
+                return colors[Math.floor(Math.random() * colors.length)];
+            }
+
+            update() {
+                // Base movement
+                this.x += this.vx * config.speed;
+                this.y += this.vy * config.speed;
+
+                // Wrap around screen
+                if (this.x < 0) this.x = width;
+                if (this.x > width) this.x = 0;
+                if (this.y < 0) this.y = height;
+                if (this.y > height) this.y = 0;
+
+                // Interaction modes
+                if (mouse.active) {
+                    const dx = mouse.x - this.x;
+                    const dy = mouse.y - this.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const force = 100 / (dist + 1);
+
+                    if (config.mode === 'gravity') {
+                        this.vx += (dx / dist) * force * 0.2;
+                        this.vy += (dy / dist) * force * 0.2;
+                    } else if (config.mode === 'repel') {
+                        if (dist < 200) {
+                            this.vx -= (dx / dist) * force * 0.5;
+                            this.vy -= (dy / dist) * force * 0.5;
+                        }
+                    } else if (config.mode === 'orbit') {
+                        const angle = Math.atan2(dy, dx);
+                        this.vx += Math.cos(angle + Math.PI/2) * force * 0.4;
+                        this.vy += Math.sin(angle + Math.PI/2) * force * 0.4;
+                    } else if (config.mode === 'chaos') {
+                        this.vx += (Math.random() - 0.5) * 2;
+                        this.vy += (Math.random() - 0.5) * 2;
+                    } else if (config.mode === 'flow') {
+                        // Simple noise-like flow using trig
+                        const flowAngle = Math.sin(this.x * 0.005) + Math.cos(this.y * 0.005);
+                        this.vx += Math.cos(flowAngle * Math.PI) * 0.1;
+                        this.vy += Math.sin(flowAngle * Math.PI) * 0.1;
+                    }
+                }
+
+                // Friction
+                this.vx *= 0.98;
+                this.vy *= 0.98;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+        }
+
+        // --- UNIVERSE ENGINE ---
+        class Universe {
+            constructor() {
+                this.particles = [];
+                this.init();
+            }
+
+            init() {
+                this.particles = [];
+                for (let i = 0; i < config.density; i++) {
+                    this.particles.push(new Particle());
+                }
+            }
+
+            update() {
+                this.particles.forEach(p => p.update());
+                
+                // Adjust density if changed
+                if (this.particles.length !== config.density) {
+                    const diff = config.density - this.particles.length;
+                    if (diff > 0) {
+                        for (let i = 0; i < diff; i++) this.particles.push(new Particle());
+                    } else {
+                        this.particles.splice(0, Math.abs(diff));
+                    }
+                }
+            }
+
+            draw() {
+                // Clear with slight trail effect
+                ctx.fillStyle = '#050505';
+                ctx.fillRect(0, 0, width, height);
+
+                // Draw connections (Constellations)
+                if (config.connectionDist > 0) {
+                    ctx.lineWidth = 0.5;
+                    for (let i = 0; i < this.particles.length; i++) {
+                        const p1 = this.particles[i];
+                        // To optimize, we only check a subset or use a grid, 
+                        // but for ~1500 particles, we'll do a bounded loop
+                        // or just limit the number of connections drawn.
+                        for (let j = i + 1; j < i + 40; j++) { // Looking at nearby neighbors in array
+                            const p2 = this.particles[j % this.particles.length];
+                            const dx = p1.x - p2.x;
+                            const dy = p1.y - p2.y;
+                            const distSq = dx * dx + dy * dy;
+                            if (distSq < config.connectionDist * config.connectionDist) {
+                                const dist = Math.sqrt(distSq);
+                                ctx.beginPath();
+                                ctx.moveTo(p1.x, p1.y);
+                                ctx.lineTo(p2.x, p2.y);
+                                const alpha = 1 - (dist / config.connectionDist);
+                                ctx.strokeStyle = p1.color;
+                                ctx.globalAlpha = alpha * 0.4;
+                                ctx.stroke();
+                                ctx.globalAlpha = 1.0;
+                            }
+                        }
+                    }
+                }
+
+                // Draw particles
+                this.particles.forEach(p => p.draw());
+            }
+
+            supernova(x, y) {
+                this.particles.forEach(p => {
+                    const dx = p.x - x;
+                    const dy = p.y - y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const force = 1000 / (dist + 1);
+                    p.vx += (dx / dist) * force;
+                    p.vy += (dy / dist) * force;
+                });
+            }
+        }
+
+        const universe = new Universe();
+
+        // --- ANIMATION LOOP ---
+        function animate() {
+            universe.update();
+            universe.draw();
+            
+            if (config.audioEnabled) {
+                audioEngine.update(universe.particles.length);
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+        // --- AUDIO ENGINE (Web Audio API) ---
+        const audioEngine = {
+            ctx: null,
+            oscillator: null,
+            gainNode: null,
+            filter: null,
+            enabled: false,
+
+            async init() {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                this.oscillator = this.ctx.createOscillator();
+                this.gainNode = this.ctx.createGain();
+                this.filter = this.ctx.createBiquadFilter();
+
+                this.oscillator.type = 'sine';
+                this.oscillator.frequency.setValueAtTime(55, this.ctx.currentTime); // Low A
+
+                this.filter.type = 'lowpass';
+                this.filter.frequency.setValueAtTime(200, this.ctx.currentTime);
+                this.filter.Q.setValueAtTime(10, this.ctx.currentTime);
+
+                this.gainNode.gain.setValueAtTime(0.05, this.ctx.currentTime);
+
+                this.oscillator.connect(this.filter);
+                this.filter.connect(this.gainNode);
+                this.gainNode.connect(this.ctx.destination);
+
+                this.oscillator.start();
+                this.enabled = true;
+                config.audioEnabled = true;
+                document.getElementById('btn-audio').innerText = "Audio Active";
+                document.getElementById('btn-audio').classList.add('bg-indigo-600/40');
+            },
+
+            update(particleCount) {
+                if (!this.enabled) return;
+                
+                // Modulate sound based on particle activity
+                // More particles = slightly higher pitch and more brightness
+                const targetFreq = 40 + (particleCount / 50);
+                const targetFilter = 100 + (mouse.active ? (1 - (mouse.x / width)) * 500 : 100);
+                
+                this.oscillator.frequency.setTargetAtTime(targetFreq, this.ctx.currentTime, 0.1);
+                this.filter.frequency.setTargetAtTime(targetFilter, this.ctx.currentTime, 0.1);
+            }
+        };
+
+        document.getElementById('btn-audio').addEventListener('click', () => {
+            audioEngine.init();
+        });
+
+        // --- UI INTERACTION ---
+        const controlsPanel = document.getElementById('controls-panel');
+        const toggleUiBtn = document.getElementById('toggle-ui');
+
+        toggleUiBtn.addEventListener('click', () => {
+            const isHidden = controlsPanel.classList.contains('translate-x-[calc(100%+2rem)]');
+            if (isHidden) {
+                controlsPanel.classList.remove('translate-x-[calc(100%+2rem)]');
+                toggleUiBtn.innerText = 'Hide';
+            } else {
+                controlsPanel.classList.add('translate-x-[calc(100%+2rem)]');
+                toggleUiBtn.innerText = 'Show';
+            }
+        });
+
+        // Mode Selectors
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const mode = btn.dataset.mode;
+                config.mode = mode;
+                
+                // UI Update
+                document.querySelectorAll('.mode-btn').forEach(b => {
+                    b.classList.remove('bg-indigo-600/40', 'border-indigo-500/50');
+                    b.classList.add('bg-white/5', 'border-white/10');
+                });
+                btn.classList.remove('bg-white/5', 'border-white/10');
+                btn.classList.add('bg-indigo-600/40', 'border-indigo-500/50');
+            });
+        });
+
+        // Sliders
+        const setupSlider = (id, configKey, displayId, multiplier = 1) => {
+            const slider = document.getElementById(id);
+            const display = document.getElementById(displayId);
+            slider.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                config[configKey] = val * multiplier;
+                display.innerText = val.toFixed(multiplier === 1 ? 0 : 1);
+                
+                if (configKey === 'density') universe.init();
+            });
+        };
+
+        setupSlider('slider-density', 'density', 'val-density');
+        setupSlider('slider-speed', 'speed', 'val-speed');
+        setupSlider('slider-connection', 'connectionDist', 'val-connection');
+        setupSlider('slider-size', 'particleSize', 'val-size');
+
+        document.getElementById('select-palette').addEventListener('change', (e) => {
+            config.palette = e.target.value;
+            // Refresh particle colors
+            universe.particles.forEach(p => p.color = p.getRandomColor());
+        });
+
+    </script>
+</body>
+</html>
